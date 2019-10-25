@@ -8,6 +8,7 @@ import cv2
 
 
 class FrameHelper(object):
+
     @staticmethod
     def rescale_frame(frame, scale_percent=50):
         """

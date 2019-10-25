@@ -8,30 +8,32 @@ from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.transforms import window
 
-from vision import detect_labels
+from vision import VisionHelper
 
 
 class LogParserFn(beam.DoFn):
 
     def process(self, element):
-        datetime, frame = element.split(' - ')
+        date, frame = element.split(' - ')
 
-        yield (datetime, frame)
+        yield (date, frame)
 
 
 class ExtractBase64StringFn(beam.DoFn):
 
     def process(self, element):
-        datetime, frame = element
+        _, frame = element
 
         yield frame
 
 
 class DetectLabelsFn(beam.DoFn):
+    def setup(self):
+        self.vision_helper = VisionHelper()
 
     def process(self, elements):
-        logging.info(len(elements))
-        yield detect_labels(elements)
+        logging.info('About to log %d elements', len(elements))
+        yield self.vision_helper.batch_annotate_images(elements)
 
 
 class AddTimestampFn(beam.DoFn):
