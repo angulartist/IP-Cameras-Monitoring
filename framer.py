@@ -35,7 +35,7 @@ class Logger(object):
 def main():
     # args parser
     parser = argparse.ArgumentParser()
-    parser.add_argument("stream", help="static video or video stream to process", required=True)
+    parser.add_argument('stream', help='static video or video stream to process')
     args = parser.parse_args()
 
     # init process
