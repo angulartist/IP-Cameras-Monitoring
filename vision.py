@@ -17,12 +17,16 @@ class VisionHelper(object):
                     'image'   : {'content': frame},
                     'features': [
                             {
-                                    'type': enums.Feature.Type.LABEL_DETECTION,
+                                    'type': enums.Feature.Type.LOGO_DETECTION,
                             }
                     ],
             })
         # Process label detection
         batch = client.batch_annotate_images(requests)
         # Return back label descriptions
-        return [label.description for response in batch.responses for label in
-                response.label_annotations]
+        return \
+            [
+                    (label.description, label.bounding_poly)
+                    for response in batch.responses
+                    for label in response.logo_annotations
+            ]
