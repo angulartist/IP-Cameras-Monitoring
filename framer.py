@@ -12,8 +12,6 @@ import logging.config as cfg
 
 import cv2
 
-from deeper import Deeper
-
 
 class FrameHelper(object):
 
@@ -56,16 +54,15 @@ def main():
     args = parser.parse_args()
 
     """Uncomment to test object detection"""
-    PROTO_PATH = './ml-model/proto.pbtxt'
-    MODEL_PATH = './ml-model/frozen_inference_graph.pb'
-    logging.info("[ML] Loading the model 🥶")
-    net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
+    # PROTO_PATH = './ml-model/proto.pbtxt'
+    # MODEL_PATH = './ml-model/frozen_inference_graph.pb'
+    # logging.info("[ML] Loading the model 🥶")
+    # net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
 
     # init process
     logger = Logger(path='./logging.conf.ini').get_logger()
     stream = cv2.VideoCapture(args.stream)
-    frame_helper = FrameHelper()
-    step = 10
+    step = 5
     frame_position = 1
     while stream.isOpened():
         has_frames, frame = stream.read()
@@ -73,18 +70,17 @@ def main():
         if not has_frames:
             break
 
-        if True:
+        if frame_position % step == 0:
             assert not isinstance(frame, type(None)), 'Frame not found! ❌'
 
-            rescaled_frame = frame_helper.rescale_frame(frame, scale_percent=30)
-            _, buffer = cv2.imencode('.jpg', rescaled_frame)
+            _, buffer = cv2.imencode('.jpg', frame)
             base64string = base64 \
                 .b64encode(buffer) \
                 .decode('utf-8')
-            # logger.info(base64string)
+            logger.info(base64string)
             print(stream.get(cv2.CAP_PROP_POS_MSEC) / 1000)
 
-            Deeper(net, confidence=0.4).detect(base64string)
+            # Deeper(net, confidence=.3).detect(base64string)
 
         frame_position += 1
 
