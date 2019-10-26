@@ -8,8 +8,7 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.transforms import window
-
-from vision import VisionHelper
+from deeper import Deeper
 
 
 class LogParserFn(beam.DoFn):
@@ -29,15 +28,16 @@ class ExtractBase64StringFn(beam.DoFn):
 
 
 class DetectLabelsFn(beam.DoFn):
-    vision_helper: VisionHelper
+    model: Deeper
 
     def setup(self):
-        self.vision_helper = VisionHelper()
+        # Should be hosted on GCS
+        self.model = Deeper('./mnssd/mnssd.txt',
+                            './mnssd/mnssd.caffemodel')
 
-    def process(self, elements):
-        logging.info('About to log %d elements', len(elements))
-
-        yield zip(elements, self.vision_helper.batch_annotate_images(elements))
+    def process(self, element):
+        self.model.detect(element)
+        yield element
 
 
 class AddTimestampFn(beam.DoFn):
@@ -46,18 +46,6 @@ class AddTimestampFn(beam.DoFn):
 
         yield window.TimestampedValue(element, datetime.timestamp(
                 datetime.strptime(date, '%Y-%m-%d %H:%M:%S')))
-
-
-def format_json(x):
-    frame, label = x
-    name, all_vertices = label
-    bounding_box = [{'x': v.x, 'y': v.y} for v in all_vertices.vertices]
-
-    return json.dumps({
-            'frame'       : str(frame),
-            'label_name'  : str(name),
-            'bounding_box': bounding_box
-    })
 
 
 def run(argv=None):
@@ -80,18 +68,15 @@ def run(argv=None):
         (p
          | 'Read Log File' >> beam.io.ReadFromText('./logs/frames.log')
          | 'Parse Log File' >> beam.ParDo(LogParserFn())
-         # | 'Add Event Time' >> beam.ParDo(AddTimestampFn())
-         # | 'Apply Fixed Window' >> beam.WindowInto(
-         #                window.FixedWindows(3))
+         | 'Add Event Time' >> beam.ParDo(AddTimestampFn())
+         | 'Apply Fixed Window' >> beam.WindowInto(
+                        window.FixedWindows(3))
          | 'Extract Base64 String' >> beam.ParDo(ExtractBase64StringFn())
-         | 'Group Into Batch' >> beam.BatchElements(min_batch_size=10, max_batch_size=10)
          | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
-         | 'Flatten' >> beam.FlatMap(lambda x: x)
-         # | 'Pair With One' >> beam.Map(lambda x: (x, 1))
-         # | beam.CombinePerKey(sum)
-         | 'Format' >> beam.Map(format_json)
-         | 'Write Output' >> beam.io.WriteToText(file_path_prefix='output',
-                                                 file_name_suffix='.json', ))
+         | 'Apply Global Window' >> beam.WindowInto(window.GlobalWindows())
+         | 'Format' >> beam.Map(lambda x: '%s' % x)
+         | 'Write Output' >> beam.io.WriteToText(file_path_prefix='demo',
+                                                 file_name_suffix='.txt', ))
         # | 'Print' >> beam.Map(lambda x: logging.info(x)))
 
 

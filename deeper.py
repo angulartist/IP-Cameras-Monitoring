@@ -49,5 +49,11 @@ class Deeper(object):
                 cv2.putText(image, label, (startX, y),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.COLORS[idx], 2)
 
-        cv2.imshow("Output", image)
-        cv2.waitKey(0)
+        _, buffer = cv2.imencode('.jpg', image)
+
+        return base64 \
+            .b64encode(buffer) \
+            .decode('utf-8')
+
+        # cv2.imshow("Output", image)
+        # cv2.waitKey(0)

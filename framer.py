@@ -63,10 +63,7 @@ def main():
                 .b64encode(buffer) \
                 .decode('utf-8')
             logger.info(base64string)
-            d = Deeper('./mnssd/mnssd.txt',
-                       './mnssd/mnssd.caffemodel')
-
-            d.detect(base64string)
+            break
 
     # Release the stream
     stream.release()
