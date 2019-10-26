@@ -1,5 +1,4 @@
-# explicit-content-detector
-Detect explicit content from video streams by processing hourly frames
+# IP Cameras Monitoring
 
 > Work in progress.
 
