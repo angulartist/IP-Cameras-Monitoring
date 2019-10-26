@@ -5,15 +5,10 @@ import cv2
 import numpy as np
 from PIL import Image
 
-# Should be stored on GCS
-PROTO_PATH = './ml-model/proto.pbtxt'
-MODEL_PATH = './ml-model/frozen_inference_graph.pb'
-
 
 class Deeper(object):
-    def __init__(self, confidence=.25):
-        self.prototype = PROTO_PATH
-        self.model = MODEL_PATH
+    def __init__(self, network, confidence=.25):
+        self.network = network
         self.confidence = confidence
         self.classes = {0 : 'background', 1: 'person', 2: 'bicycle',
                         3 : 'car', 4: 'motorcycle', 5: 'airplane', 6: 'bus',
@@ -42,14 +37,12 @@ class Deeper(object):
                 BytesIO(base64.b64decode(base64string))
         )), cv2.COLOR_BGR2RGB)
 
-        print("[ML] Loading the model 🥶")
-        net = cv2.dnn.readNetFromTensorflow(self.model, self.prototype)
         (h, w) = image.shape[:2]
         blob = cv2.dnn.blobFromImage(image, size=(300, 300), swapRB=True)
 
         print("[ML] Computing object detections 👻")
-        net.setInput(blob)
-        detections = net.forward()
+        self.network.setInput(blob)
+        detections = self.network.forward()
 
         labels = []
         for i in np.arange(0, detections.shape[2]):

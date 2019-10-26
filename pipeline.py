@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 
 import apache_beam as beam
+import cv2
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.transforms import window
@@ -31,7 +32,12 @@ class DetectLabelsFn(beam.DoFn):
     model: Deeper
 
     def setup(self):
-        self.model = Deeper(confidence=0.3)
+        # Should be stored on GCS
+        PROTO_PATH = './ml-model/proto.pbtxt'
+        MODEL_PATH = './ml-model/frozen_inference_graph.pb'
+        print("[ML] Loading the model 🥶")
+        net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
+        self.model = Deeper(net, confidence=0.3)
 
     def process(self, element):
         self.model.detect(element)
