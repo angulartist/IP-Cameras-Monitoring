@@ -4,6 +4,7 @@ import logging
 import logging.config as cfg
 
 import cv2
+import imutils
 
 
 class FrameHelper(object):
@@ -49,8 +50,7 @@ def main():
     # init process
     logger = Logger(path='./logging.conf.ini').get_logger()
     stream = cv2.VideoCapture(args.stream)
-    frame_helper = FrameHelper()
-    fps = 20
+    step = 10
     frame_position = 1
     while stream.isOpened():
         has_frames, frame = stream.read()
@@ -58,18 +58,16 @@ def main():
         if not has_frames:
             break
 
-        if frame_position % fps == 0:
+        if frame_position % step == 0:
             assert not isinstance(frame, type(None)), 'Frame not found!'
 
-            rescaled_frame = frame_helper.resize_frame(frame)
+            rescaled_frame = imutils.resize(frame, width=400)
             _, buffer = cv2.imencode('.jpg', rescaled_frame)
             base64string = base64 \
                 .b64encode(buffer) \
                 .decode('utf-8')
             logger.info(base64string)
             print(stream.get(cv2.CAP_PROP_POS_MSEC) / 1000)
-            # Deeper() \
-            #     .detect(base64string)
         frame_position += 1
 
     # Release the stream

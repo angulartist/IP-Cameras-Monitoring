@@ -31,8 +31,7 @@ class DetectLabelsFn(beam.DoFn):
     model: Deeper
 
     def setup(self):
-        # Should be hosted on GCS
-        self.model = Deeper()
+        self.model = Deeper(confidence=0.3)
 
     def process(self, element):
         self.model.detect(element)
@@ -72,13 +71,16 @@ def run(argv=None):
     # options.view_as(StandardOptions).runner = 'DataflowRunner'
 
     with beam.Pipeline(options=options) as p:
-        (p
-         | 'Read Log File' >> beam.io.ReadFromText('./logs/frames.log')
-         | 'Parse Log File' >> beam.ParDo(LogParserFn())
-         | 'Add Event Time' >> beam.ParDo(AddTimestampFn())
-         | 'Apply Fixed Window' >> beam.WindowInto(
-                        window.FixedWindows(5))
-         | 'Extract Base64 String' >> beam.ParDo(ExtractBase64StringFn())
+        parsed_frames = \
+            (p
+             | 'Read Log File' >> beam.io.ReadFromText('./logs/frames.log')
+             | 'Parse Log File' >> beam.ParDo(LogParserFn())
+             | 'Add Event Time' >> beam.ParDo(AddTimestampFn()))
+
+        (parsed_frames
+         # | 'Apply Fixed Window' >> beam.WindowInto(
+         #                window.FixedWindows(5))
+         # | 'Extract Base64 String' >> beam.ParDo(ExtractBase64StringFn())
          | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
          # | 'Apply Global Window' >> beam.WindowInto(window.GlobalWindows()))
          | 'Format' >> beam.FlatMap(lambda x: x)

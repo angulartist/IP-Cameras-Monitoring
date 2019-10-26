@@ -2,6 +2,8 @@
 
 > Work in progress.
 
+![](img/demo.gif)
+
 Tech used:
 
 * [Apache Airflow](https://airflow.apache.org/) Workflow orchestrator
