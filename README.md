@@ -2,7 +2,7 @@
 
 > Work in progress.
 
-![](img/run.png)
+![](img/yoloswag.gif)
 
 Tech used:
 
@@ -11,5 +11,5 @@ Tech used:
 * [Cloud Dataflow](https://cloud.google.com/dataflow/) Runner
 * [Cloud Storage](https://cloud.google.com/storage/) Object Storage
 * [Google MobileNet-SSD](https://github.com/chuanqi305/MobileNet-SSD) Detection Network
-
+* TensorFlow
 

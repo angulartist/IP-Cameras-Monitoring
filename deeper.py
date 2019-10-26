@@ -71,7 +71,8 @@ class Deeper(object):
                             (startX, y),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colors[index], 2)
 
-        return labels
+        # return labels
 
-        # cv2.imshow("Output", image)
-        # cv2.waitKey(1)
+        """Uncomment to test object detection"""
+        cv2.imshow("Output", image)
+        cv2.waitKey(1)
