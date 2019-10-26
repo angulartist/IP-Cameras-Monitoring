@@ -2,7 +2,7 @@
 
 > Work in progress.
 
-![](img/demo.gif)
+![](img/run.png)
 
 Tech used:
 

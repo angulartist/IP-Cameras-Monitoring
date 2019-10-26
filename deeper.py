@@ -5,17 +5,35 @@ import cv2
 import numpy as np
 from PIL import Image
 
+# Should be stored on GCS
+PROTO_PATH = './ml-model/proto.pbtxt'
+MODEL_PATH = './ml-model/frozen_inference_graph.pb'
+
 
 class Deeper(object):
     def __init__(self, confidence=.25):
-        self.prototype = './mnssd/mnssd.txt'
-        self.model = './mnssd/mnssd.caffemodel'
+        self.prototype = PROTO_PATH
+        self.model = MODEL_PATH
         self.confidence = confidence
-
-        self.CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
-                        "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
-                        "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
-                        "sofa", "train", "tvmonitor"]
+        self.CLASSES = {0 : 'background',
+                        1 : 'person', 2: 'bicycle', 3: 'car', 4: 'motorcycle', 5: 'airplane',
+                        6 : 'bus',
+                        7 : 'train', 8: 'truck', 9: 'boat', 10: 'traffic light', 11: 'fire hydrant',
+                        13: 'stop sign', 14: 'parking meter', 15: 'bench', 16: 'bird', 17: 'cat',
+                        18: 'dog', 19: 'horse', 20: 'sheep', 21: 'cow', 22: 'elephant', 23: 'bear',
+                        24: 'zebra', 25: 'giraffe', 27: 'backpack', 28: 'umbrella', 31: 'handbag',
+                        32: 'tie', 33: 'suitcase', 34: 'frisbee', 35: 'skis', 36: 'snowboard',
+                        37: 'sports ball', 38: 'kite', 39: 'baseball bat', 40: 'baseball glove',
+                        41: 'skateboard', 42: 'surfboard', 43: 'tennis racket', 44: 'bottle',
+                        46: 'wine glass', 47: 'cup', 48: 'fork', 49: 'knife', 50: 'spoon',
+                        51: 'bowl', 52: 'banana', 53: 'apple', 54: 'sandwich', 55: 'orange',
+                        56: 'broccoli', 57: 'carrot', 58: 'hot dog', 59: 'pizza', 60: 'donut',
+                        61: 'cake', 62: 'chair', 63: 'couch', 64: 'potted plant', 65: 'bed',
+                        67: 'dining table', 70: 'toilet', 72: 'tv', 73: 'laptop', 74: 'mouse',
+                        75: 'remote', 76: 'keyboard', 77: 'cell phone', 78: 'microwave', 79: 'oven',
+                        80: 'toaster', 81: 'sink', 82: 'refrigerator', 84: 'book', 85: 'clock',
+                        86: 'vase', 87: 'scissors', 88: 'teddy bear', 89: 'hair drier',
+                        90: 'toothbrush'}
         self.COLORS = np.random.uniform(0, 255, size=(len(self.CLASSES), 3))
 
     def detect(self, base64string):
@@ -25,9 +43,9 @@ class Deeper(object):
                              cv2.COLOR_BGR2RGB)
 
         print("[INFO] loading model...")
-        net = cv2.dnn.readNetFromCaffe(self.prototype, self.model)
+        net = cv2.dnn.readNetFromTensorflow(self.model, self.prototype)
         (h, w) = image.shape[:2]
-        blob = cv2.dnn.blobFromImage(cv2.resize(image, (300, 300)), 0.007843, (300, 300), 127.5)
+        blob = cv2.dnn.blobFromImage(image, size=(300, 300), swapRB=True)
 
         print("[INFO] computing object detections...")
         net.setInput(blob)
@@ -50,7 +68,7 @@ class Deeper(object):
                 cv2.putText(image, label_with_confidence, (startX, y),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.COLORS[idx], 2)
 
-        return labels
+        # return labels
 
-        # cv2.imshow("Output", image)
-        # cv2.waitKey(0)
+        cv2.imshow("Output", image)
+        cv2.waitKey(1)

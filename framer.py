@@ -4,7 +4,8 @@ import logging
 import logging.config as cfg
 
 import cv2
-import imutils
+
+from deeper import Deeper
 
 
 class FrameHelper(object):
@@ -50,6 +51,7 @@ def main():
     # init process
     logger = Logger(path='./logging.conf.ini').get_logger()
     stream = cv2.VideoCapture(args.stream)
+    frame_helper = FrameHelper()
     step = 10
     frame_position = 1
     while stream.isOpened():
@@ -61,13 +63,14 @@ def main():
         if frame_position % step == 0:
             assert not isinstance(frame, type(None)), 'Frame not found!'
 
-            rescaled_frame = imutils.resize(frame, width=400)
+            rescaled_frame = frame_helper.rescale_frame(frame, scale_percent=50)
             _, buffer = cv2.imencode('.jpg', rescaled_frame)
             base64string = base64 \
                 .b64encode(buffer) \
                 .decode('utf-8')
-            logger.info(base64string)
-            print(stream.get(cv2.CAP_PROP_POS_MSEC) / 1000)
+            # logger.info(base64string)
+            # print(stream.get(cv2.CAP_PROP_POS_MSEC) / 1000)
+            Deeper().detect(base64string)
         frame_position += 1
 
     # Release the stream
