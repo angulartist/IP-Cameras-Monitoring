@@ -15,9 +15,8 @@ class Deeper(object):
         self.prototype = PROTO_PATH
         self.model = MODEL_PATH
         self.confidence = confidence
-        self.CLASSES = {0 : 'background',
-                        1 : 'person', 2: 'bicycle', 3: 'car', 4: 'motorcycle', 5: 'airplane',
-                        6 : 'bus',
+        self.classes = {0 : 'background', 1: 'person', 2: 'bicycle',
+                        3 : 'car', 4: 'motorcycle', 5: 'airplane', 6: 'bus',
                         7 : 'train', 8: 'truck', 9: 'boat', 10: 'traffic light', 11: 'fire hydrant',
                         13: 'stop sign', 14: 'parking meter', 15: 'bench', 16: 'bird', 17: 'cat',
                         18: 'dog', 19: 'horse', 20: 'sheep', 21: 'cow', 22: 'elephant', 23: 'bear',
@@ -34,20 +33,21 @@ class Deeper(object):
                         80: 'toaster', 81: 'sink', 82: 'refrigerator', 84: 'book', 85: 'clock',
                         86: 'vase', 87: 'scissors', 88: 'teddy bear', 89: 'hair drier',
                         90: 'toothbrush'}
-        self.COLORS = np.random.uniform(0, 255, size=(len(self.CLASSES), 3))
+        self.colors = np.random.uniform(0, 255, size=(len(self.classes), 3))
 
     def detect(self, base64string):
-        assert not isinstance(base64string, type(None)), 'Frame not found!'
+        assert not isinstance(base64string, type(None)), 'Frame not found! ❌'
 
-        image = cv2.cvtColor(np.array(Image.open(BytesIO(base64.b64decode(base64string)))),
-                             cv2.COLOR_BGR2RGB)
+        image = cv2.cvtColor(np.array(Image.open(
+                BytesIO(base64.b64decode(base64string))
+        )), cv2.COLOR_BGR2RGB)
 
-        print("[INFO] loading model...")
+        print("[ML] Loading the model 🥶")
         net = cv2.dnn.readNetFromTensorflow(self.model, self.prototype)
         (h, w) = image.shape[:2]
         blob = cv2.dnn.blobFromImage(image, size=(300, 300), swapRB=True)
 
-        print("[INFO] computing object detections...")
+        print("[ML] Computing object detections 👻")
         net.setInput(blob)
         detections = net.forward()
 
@@ -56,19 +56,27 @@ class Deeper(object):
             confidence = detections[0, 0, i, 2]
 
             if confidence > self.confidence:
-                idx = int(detections[0, 0, i, 1])
+                index = int(detections[0, 0, i, 1])
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (startX, startY, endX, endY) = box.astype("int")
 
-                label_with_confidence = "{}: {:.2f}%".format(self.CLASSES[idx], confidence * 100)
-                labels.append('%s' % self.CLASSES[idx])
-                cv2.rectangle(image, (startX, startY), (endX, endY),
-                              self.COLORS[idx], 2)
+                label_with_confidence = "{}: {:.2f}%".format(self.classes[index], confidence * 100)
+
+                labels.append('%s' % self.classes[index])
+
+                cv2.rectangle(image,
+                              (startX, startY),
+                              (endX, endY),
+                              self.colors[index], 2)
+
                 y = startY - 15 if startY - 15 > 15 else startY + 15
-                cv2.putText(image, label_with_confidence, (startX, y),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.COLORS[idx], 2)
 
-        # return labels
+                cv2.putText(image,
+                            label_with_confidence,
+                            (startX, y),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colors[index], 2)
 
-        cv2.imshow("Output", image)
-        cv2.waitKey(1)
+        return labels
+
+        # cv2.imshow("Output", image)
+        # cv2.waitKey(1)

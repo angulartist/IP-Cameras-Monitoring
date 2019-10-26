@@ -80,7 +80,7 @@ def run(argv=None):
         (parsed_frames
          # | 'Apply Fixed Window' >> beam.WindowInto(
          #                window.FixedWindows(5))
-         # | 'Extract Base64 String' >> beam.ParDo(ExtractBase64StringFn())
+         | 'Extract Base64 String' >> beam.ParDo(ExtractBase64StringFn())
          | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
          # | 'Apply Global Window' >> beam.WindowInto(window.GlobalWindows()))
          | 'Format' >> beam.FlatMap(lambda x: x)

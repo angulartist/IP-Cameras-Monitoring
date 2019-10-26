@@ -18,7 +18,7 @@ class FrameHelper(object):
         :param scale_percent: The scale percent ratio to apply. Default is 50.
         :return: A new rescaled frame.
         """
-        assert not isinstance(frame, type(None)), 'Frame not found!'
+        assert not isinstance(frame, type(None)), 'Frame not found! ❌'
 
         width = int(frame.shape[1] * scale_percent / 100)
         height = int(frame.shape[0] * scale_percent / 100)
@@ -28,7 +28,7 @@ class FrameHelper(object):
 
     @staticmethod
     def resize_frame(frame, width=640, height=480):
-        assert not isinstance(frame, type(None)), 'Frame not found!'
+        assert not isinstance(frame, type(None)), 'Frame not found! ❌'
 
         return cv2.resize(frame, (width, height))
 
@@ -61,16 +61,16 @@ def main():
             break
 
         if frame_position % step == 0:
-            assert not isinstance(frame, type(None)), 'Frame not found!'
+            assert not isinstance(frame, type(None)), 'Frame not found! ❌'
 
             rescaled_frame = frame_helper.rescale_frame(frame, scale_percent=50)
             _, buffer = cv2.imencode('.jpg', rescaled_frame)
             base64string = base64 \
                 .b64encode(buffer) \
                 .decode('utf-8')
-            # logger.info(base64string)
-            # print(stream.get(cv2.CAP_PROP_POS_MSEC) / 1000)
-            Deeper().detect(base64string)
+            logger.info(base64string)
+            print(stream.get(cv2.CAP_PROP_POS_MSEC) / 1000)
+            # Deeper().detect(base64string)
         frame_position += 1
 
     # Release the stream
