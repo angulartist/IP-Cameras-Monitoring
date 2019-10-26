@@ -1,11 +1,16 @@
+"""
+Cut a video stream into N frames with a time rotating log file handler.
+Convert each frame into its base64 representation to be pushed to the downstream.
+"""
+
+from __future__ import absolute_import
+
 import argparse
 import base64
 import logging
 import logging.config as cfg
 
 import cv2
-
-from deeper import Deeper
 
 
 class FrameHelper(object):

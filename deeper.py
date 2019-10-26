@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import base64
 from io import BytesIO
 

@@ -35,9 +35,9 @@ class DetectLabelsFn(beam.DoFn):
         # Should be stored on GCS
         PROTO_PATH = './ml-model/proto.pbtxt'
         MODEL_PATH = './ml-model/frozen_inference_graph.pb'
-        print("[ML] Loading the model 🥶")
+        logging.info("[ML] Loading the model 🥶")
         net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
-        self.model = Deeper(net, confidence=0.3)
+        self.model = Deeper(net, confidence=0.4)
 
     def process(self, element):
         self.model.detect(element)
