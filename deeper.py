@@ -54,6 +54,3 @@ class Deeper(object):
         return base64 \
             .b64encode(buffer) \
             .decode('utf-8')
-
-        # cv2.imshow("Output", image)
-        # cv2.waitKey(0)

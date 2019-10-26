@@ -6,8 +6,6 @@ import math
 
 import cv2
 
-from deeper import Deeper
-
 
 class FrameHelper(object):
 
@@ -56,13 +54,14 @@ def main():
 
         if current_frame % math.floor(global_frame_rate) == 0:
             assert not isinstance(frame, type(None)), 'Frame not found!'
-            # Rescale image to lower the weight (Vision API requires less than 10MB json body)
+
             frame_helper.rescale_frame(frame, scale_percent=75)
             _, buffer = cv2.imencode('.jpg', frame)
             base64string = base64 \
                 .b64encode(buffer) \
                 .decode('utf-8')
             logger.info(base64string)
+            # Frame per frame (TESTING MODE)
             break
 
     # Release the stream
