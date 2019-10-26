@@ -9,6 +9,6 @@ Tech used:
 * [Apache Beam](https://beam.apache.org/) Unified portable programming model for writing distributed data processing pipelines
 * [Cloud Dataflow](https://cloud.google.com/dataflow/) Runner
 * [Cloud Storage](https://cloud.google.com/storage/) Object Storage
-* [Cloud Vision AI](https://cloud.google.com/vision/) to annonate images
+* [Google MobileNet-SSD](https://github.com/chuanqi305/MobileNet-SSD) Detection Network
 
 
