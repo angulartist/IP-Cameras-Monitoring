@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-import json
 import logging
 from datetime import datetime
 
@@ -8,6 +7,7 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.transforms import window
+
 from deeper import Deeper
 
 
@@ -32,12 +32,12 @@ class DetectLabelsFn(beam.DoFn):
 
     def setup(self):
         # Should be hosted on GCS
-        self.model = Deeper('./mnssd/mnssd.txt',
-                            './mnssd/mnssd.caffemodel')
+        self.model = Deeper()
 
     def process(self, element):
         self.model.detect(element)
-        yield element
+
+        yield self.model.detect(element)
 
 
 class AddTimestampFn(beam.DoFn):
@@ -46,6 +46,13 @@ class AddTimestampFn(beam.DoFn):
 
         yield window.TimestampedValue(element, datetime.timestamp(
                 datetime.strptime(date, '%Y-%m-%d %H:%M:%S')))
+
+
+class WindowFormatterFn(beam.DoFn):
+    def process(self, element,
+                win=beam.DoFn.WindowParam,
+                tsp=beam.DoFn.TimestampParam):
+        yield '%s - %s - %s' % (win, tsp, element)
 
 
 def run(argv=None):
@@ -70,14 +77,17 @@ def run(argv=None):
          | 'Parse Log File' >> beam.ParDo(LogParserFn())
          | 'Add Event Time' >> beam.ParDo(AddTimestampFn())
          | 'Apply Fixed Window' >> beam.WindowInto(
-                        window.FixedWindows(3))
+                        window.FixedWindows(5))
          | 'Extract Base64 String' >> beam.ParDo(ExtractBase64StringFn())
          | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
-         | 'Apply Global Window' >> beam.WindowInto(window.GlobalWindows())
-         | 'Format' >> beam.Map(lambda x: '%s' % x)
-         | 'Write Output' >> beam.io.WriteToText(file_path_prefix='demo',
-                                                 file_name_suffix='.txt', ))
-        # | 'Print' >> beam.Map(lambda x: logging.info(x)))
+         # | 'Apply Global Window' >> beam.WindowInto(window.GlobalWindows()))
+         | 'Format' >> beam.FlatMap(lambda x: x)
+         | 'Pair With One' >> beam.Map(lambda x: (x, 1))
+         | 'Sum Label Occurrences' >> beam.CombinePerKey(sum)
+         | 'Format with Window and Timestamp' >> beam.ParDo(WindowFormatterFn())
+         # | 'Write Output' >> beam.io.WriteToText(file_path_prefix='demo',
+         #                                         file_name_suffix='.txt', ))
+         | 'Print' >> beam.Map(lambda x: logging.info(x)))
 
 
 if __name__ == '__main__':

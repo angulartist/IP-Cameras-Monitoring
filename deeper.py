@@ -7,9 +7,9 @@ from PIL import Image
 
 
 class Deeper(object):
-    def __init__(self, prototype, model, confidence=.25):
-        self.prototype = prototype
-        self.model = model
+    def __init__(self, confidence=.25):
+        self.prototype = './mnssd/mnssd.txt'
+        self.model = './mnssd/mnssd.caffemodel'
         self.confidence = confidence
 
         self.CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
@@ -33,6 +33,7 @@ class Deeper(object):
         net.setInput(blob)
         detections = net.forward()
 
+        labels = []
         for i in np.arange(0, detections.shape[2]):
             confidence = detections[0, 0, i, 2]
 
@@ -41,16 +42,15 @@ class Deeper(object):
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (startX, startY, endX, endY) = box.astype("int")
 
-                label = "{}: {:.2f}%".format(self.CLASSES[idx], confidence * 100)
-                print("[INFO] {}".format(label))
+                label_with_confidence = "{}: {:.2f}%".format(self.CLASSES[idx], confidence * 100)
+                labels.append('%s' % self.CLASSES[idx])
                 cv2.rectangle(image, (startX, startY), (endX, endY),
                               self.COLORS[idx], 2)
                 y = startY - 15 if startY - 15 > 15 else startY + 15
-                cv2.putText(image, label, (startX, y),
+                cv2.putText(image, label_with_confidence, (startX, y),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.COLORS[idx], 2)
 
-        _, buffer = cv2.imencode('.jpg', image)
+        return labels
 
-        return base64 \
-            .b64encode(buffer) \
-            .decode('utf-8')
+        # cv2.imshow("Output", image)
+        # cv2.waitKey(0)
