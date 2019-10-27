@@ -4,7 +4,7 @@
 
 ![](img/yoloswag.gif)
 
-Tech used:
+Tech involved:
 
 * [Apache Airflow](https://airflow.apache.org/) Workflow orchestrator
 * [Apache Beam](https://beam.apache.org/) Unified portable programming model for writing distributed data processing pipelines
@@ -12,4 +12,5 @@ Tech used:
 * [Cloud Storage](https://cloud.google.com/storage/) Object Storage
 * [Google MobileNet-SSD](https://github.com/chuanqi305/MobileNet-SSD) Detection Network
 * TensorFlow
+* [OpenCV]
 
