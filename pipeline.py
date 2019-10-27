@@ -4,12 +4,11 @@ import logging
 from datetime import datetime
 
 import apache_beam as beam
-import cv2
 from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.transforms import window
 
-from ml_processing.deeper import Deeper
+from ml_processing.model.inference import DetectLabelsFn
 
 
 class LogParserFn(beam.DoFn):
@@ -26,22 +25,6 @@ class ExtractBase64StringFn(beam.DoFn):
         _, frame = element
 
         yield frame
-
-
-class DetectLabelsFn(beam.DoFn):
-    model: Deeper
-
-    def setup(self):
-        PROTO_PATH = 'gs://ml-video-cv/sample/ml-model/proto.pbtxt'
-        MODEL_PATH = 'https://storage.cloud.google.com/ml-video-cv/sample/ml-model/frozen_inference_graph.pb'
-        logging.info("[ML] Loading the model 🥶")
-        net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
-        self.model = Deeper(net, confidence=.3)
-
-    def process(self, element):
-        self.model.detect(element)
-
-        yield self.model.detect(element)
 
 
 class AddTimestampFn(beam.DoFn):

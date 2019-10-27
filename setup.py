@@ -13,5 +13,11 @@ setuptools.setup(
         version=PACKAGE_VERSION,
         description='quick ml experiment',
         install_requires=REQUIRED_PACKAGES,
-        packages=setuptools.find_packages()
+        packages=setuptools.find_packages(),
+        package_data={
+                PACKAGE_NAME: [
+                        'model/*',
+                        'model/trained/*'
+                ]
+        }
 )
