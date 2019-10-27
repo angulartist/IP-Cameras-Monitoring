@@ -57,13 +57,10 @@ def run(argv=None):
          | 'Apply Fixed Window' >> beam.WindowInto(
                         window.FixedWindows(5))
          | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
-         # | 'Apply Global Window' >> beam.WindowInto(window.GlobalWindows()))
          | 'Format' >> beam.FlatMap(lambda x: x)
          | 'Pair With One' >> beam.Map(lambda x: (x, 1))
          | 'Sum Label Occurrences' >> beam.CombinePerKey(sum)
          | 'Format with Window and Timestamp' >> beam.ParDo(WindowFormatterFn())
-         # | 'Write Output' >> beam.io.WriteToText(file_path_prefix='demo',
-         #                                         file_name_suffix='.txt', ))
          | 'Print' >> beam.Map(lambda x: logging.info(x)))
 
 

@@ -7,24 +7,24 @@ from __future__ import absolute_import
 
 import argparse
 import logging
-import logging.config as cfg
 import time
 
 import cv2
-from google.cloud import pubsub_v1
+from google.cloud import pubsub
 
 
-class PubSub(object):
-    def __init__(self, project_id='alert-shape-256811', topic_name='ml-flow'):
-        self.publisher = pubsub_v1.PublisherClient(
-                pubsub_v1.types.BatchSettings(max_latency=2)
+class PubSubClient(object):
+    def __init__(self, project='alert-shape-256811', topic='ml-flow'):
+        settings = pubsub.types.BatchSettings(
+                max_messages=10,
+                max_latency=5,
         )
-        self.topic_path = self.publisher.topic_path(project_id, topic_name)
+        self.publisher = pubsub.PublisherClient(batch_settings=settings)
+        self.topic_path = self.publisher.topic_path(project, topic)
 
     def publish(self, frame_as_bytes):
         future = self.publisher.publish(self.topic_path, data=frame_as_bytes)
-        print(future.result())
-        print('Published messages with batch settings.')
+        logging.info('Published id: %s', future.result())
 
 
 class FrameHelper(object):
@@ -37,7 +37,6 @@ class FrameHelper(object):
         :param scale_percent: The scale percent ratio to apply. Default is 50.
         :return: A new rescaled frame.
         """
-        assert not isinstance(frame, type(None)), 'Frame not found! ❌'
 
         width = int(frame.shape[1] * scale_percent / 100)
         height = int(frame.shape[0] * scale_percent / 100)
@@ -47,18 +46,7 @@ class FrameHelper(object):
 
     @staticmethod
     def resize_frame(frame, width=640, height=480):
-        assert not isinstance(frame, type(None)), 'Frame not found! ❌'
-
         return cv2.resize(frame, (width, height))
-
-
-class Logger(object):
-    def __init__(self, path):
-        cfg.fileConfig(path)
-        self.logger = logging.getLogger('root')
-
-    def get_logger(self):
-        return self.logger
 
 
 def main():
@@ -68,35 +56,33 @@ def main():
     args = parser.parse_args()
 
     """Uncomment to test object detection"""
-    # PROTO_PATH = './ml-model/proto.pbtxt'
-    # MODEL_PATH = './ml-model/frozen_inference_graph.pb'
+    # PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
+    # MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
     # logging.info("[ML] Loading the model 🥶")
     # net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
 
-    # init process
-    pub_sub = PubSub()
-    # logger = Logger(path='./logging.conf.ini').get_logger()
+    pub_sub_client = PubSubClient()
+    frame_helper = FrameHelper()
     stream = cv2.VideoCapture(args.stream)
-    step = 5
-    frame_position = 1
+
+    time.sleep(5.0)
     while stream.isOpened():
         has_frames, frame = stream.read()
 
         if not has_frames:
             break
 
-        if frame_position % step == 0:
-            assert not isinstance(frame, type(None)), 'Frame not found! ❌'
+        frame = frame_helper.rescale_frame(frame, scale_percent=40)
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+        _, buffer = cv2.imencode('.jpg', frame, encode_param)
+        logging.info('Will publish frame...')
+        pub_sub_client.publish(buffer.tobytes())
 
-            _, buffer = cv2.imencode('.jpg', frame)
-            pub_sub.publish(buffer.tobytes())
-            print(stream.get(cv2.CAP_PROP_POS_MSEC) / 1000)
-            time.sleep(0.2)
+        """Uncomment to visualize labels and boxes"""
+        # labels = Deeper(net, confidence=.3).detect(frame)
 
-            # Deeper(net, confidence=.3).detect(base64string)
-
-        frame_position += 1
-
+        # Avoid CPU intensive work
+        time.sleep(0.2)
     # Release the stream
     stream.release()
 

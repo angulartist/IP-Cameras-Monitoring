@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-import base64
 from io import BytesIO
 
 import cv2
@@ -33,18 +32,11 @@ class Deeper(object):
         self.colors = np.random.uniform(0, 255, size=(len(self.classes) * 2, 3))
 
     def detect(self, frame_as_bytes):
-        assert not isinstance(frame_as_bytes, type(None)), 'Frame not found! ❌'
-
         image = cv2.cvtColor(np.array(Image.open(
                 BytesIO(frame_as_bytes)
         )), cv2.COLOR_BGR2RGB)
 
-        """Uncomment to visualize labels and boxes"""
-        # (h, w) = image.shape[:2]
-
         blob = cv2.dnn.blobFromImage(image, size=(300, 300), swapRB=True)
-
-        print("[ML] Computing object detections 👻")
         self.network.setInput(blob)
         detections = self.network.forward()
 
@@ -56,27 +48,4 @@ class Deeper(object):
                 index = int(detections[0, 0, i, 1])
                 labels.append('%s' % self.classes[index])
 
-                """Uncomment to visualize labels and boxes"""
-                # box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                # (startX, startY, endX, endY) = box.astype("int")
-                # label_with_confidence = "{}: {:.2f}%".format(self.classes[index],
-                # confidence * 100)
-                #
-                # cv2.rectangle(image,
-                #               (startX, startY),
-                #               (endX, endY),
-                #               self.colors[index], 1)
-                #
-                # y = startY - 15 if startY - 15 > 15 else startY + 15
-                #
-                # cv2.putText(image,
-                #             label_with_confidence,
-                #             (startX, y),
-                #             cv2.FONT_HERSHEY_SIMPLEX,
-                #             0.5, self.colors[index], 1)
-
         return labels
-
-        """Uncomment to test object detection"""
-        # cv2.imshow("Output", image)
-        # cv2.waitKey(1)
