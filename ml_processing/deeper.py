@@ -32,11 +32,11 @@ class Deeper(object):
                         90: 'toothbrush'}
         self.colors = np.random.uniform(0, 255, size=(len(self.classes) * 2, 3))
 
-    def detect(self, base64string):
-        assert not isinstance(base64string, type(None)), 'Frame not found! ❌'
+    def detect(self, frame_as_bytes):
+        assert not isinstance(frame_as_bytes, type(None)), 'Frame not found! ❌'
 
         image = cv2.cvtColor(np.array(Image.open(
-                BytesIO(base64.b64decode(base64string))
+                BytesIO(frame_as_bytes)
         )), cv2.COLOR_BGR2RGB)
 
         """Uncomment to visualize labels and boxes"""

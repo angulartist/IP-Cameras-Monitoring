@@ -4,27 +4,12 @@ import logging
 from datetime import datetime
 
 import apache_beam as beam
+import six
 from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.transforms import window
 
 from ml_processing.model.inference import DetectLabelsFn
-
-
-class LogParserFn(beam.DoFn):
-
-    def process(self, element):
-        date, frame = element.split(' - ')
-
-        yield (date, frame)
-
-
-class ExtractBase64StringFn(beam.DoFn):
-
-    def process(self, element):
-        _, frame = element
-
-        yield frame
 
 
 class AddTimestampFn(beam.DoFn):
@@ -54,21 +39,23 @@ def run(argv=None):
     options = PipelineOptions(flags=argv)
 
     options.view_as(SetupOptions).save_main_session = True
+    options.view_as(StandardOptions).streaming = True
 
     # Uncomment this to run the pipeline on the Cloud (Dataflow)
-    options.view_as(StandardOptions).runner = 'DataflowRunner'
+    # options.view_as(StandardOptions).runner = 'DataflowRunner'
 
     with beam.Pipeline(options=options) as p:
         parsed_frames = \
             (p
-             | 'Read Log File' >> beam.io.ReadFromText('gs://ml-video-cv/sample/frames.log')
-             | 'Parse Log File' >> beam.ParDo(LogParserFn())
-             | 'Add Event Time' >> beam.ParDo(AddTimestampFn()))
+             | 'Read From Pub/Sub' >> beam.io.ReadFromPubSub(
+                            topic='projects/alert-shape-256811/topics/ml-flow',
+                            # id_label='event_id'
+                    ).with_output_types(six.binary_type))
+        # | 'Add Event Time' >> beam.ParDo(AddTimestampFn()))
 
         (parsed_frames
-         # | 'Apply Fixed Window' >> beam.WindowInto(
-         #                window.FixedWindows(5))
-         | 'Extract Base64 String' >> beam.ParDo(ExtractBase64StringFn())
+         | 'Apply Fixed Window' >> beam.WindowInto(
+                        window.FixedWindows(5))
          | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
          # | 'Apply Global Window' >> beam.WindowInto(window.GlobalWindows()))
          | 'Format' >> beam.FlatMap(lambda x: x)

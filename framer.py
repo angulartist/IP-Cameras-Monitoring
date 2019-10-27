@@ -6,11 +6,25 @@ Convert each frame into its base64 representation to be pushed to the downstream
 from __future__ import absolute_import
 
 import argparse
-import base64
 import logging
 import logging.config as cfg
+import time
 
 import cv2
+from google.cloud import pubsub_v1
+
+
+class PubSub(object):
+    def __init__(self, project_id='alert-shape-256811', topic_name='ml-flow'):
+        self.publisher = pubsub_v1.PublisherClient(
+                pubsub_v1.types.BatchSettings(max_latency=2)
+        )
+        self.topic_path = self.publisher.topic_path(project_id, topic_name)
+
+    def publish(self, frame_as_bytes):
+        future = self.publisher.publish(self.topic_path, data=frame_as_bytes)
+        print(future.result())
+        print('Published messages with batch settings.')
 
 
 class FrameHelper(object):
@@ -60,7 +74,8 @@ def main():
     # net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
 
     # init process
-    logger = Logger(path='./logging.conf.ini').get_logger()
+    pub_sub = PubSub()
+    # logger = Logger(path='./logging.conf.ini').get_logger()
     stream = cv2.VideoCapture(args.stream)
     step = 5
     frame_position = 1
@@ -74,11 +89,9 @@ def main():
             assert not isinstance(frame, type(None)), 'Frame not found! ❌'
 
             _, buffer = cv2.imencode('.jpg', frame)
-            base64string = base64 \
-                .b64encode(buffer) \
-                .decode('utf-8')
-            logger.info(base64string)
+            pub_sub.publish(buffer.tobytes())
             print(stream.get(cv2.CAP_PROP_POS_MSEC) / 1000)
+            time.sleep(0.2)
 
             # Deeper(net, confidence=.3).detect(base64string)
 
