@@ -43,7 +43,7 @@ def main():
         # print('Will publish frame...')
         pub_sub_client.publish(buffer.tobytes())
 
-        return frame, t0
+        return current_frame, t0
 
     while stream.isOpened():
         while len(pending) > 0 and pending[0].ready():
@@ -60,9 +60,6 @@ def main():
 
             task = pool.apply_async(process_frame, (frame.copy(), t))
             pending.append(task)
-
-            """Uncomment to visualize labels and boxes"""
-            # labels = Deeper(net, confidence=.3).detect(frame)
     # Release the stream
     stream.release()
 
