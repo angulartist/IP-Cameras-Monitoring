@@ -19,7 +19,7 @@ class PubSubClient(object):
                 max_messages=10,
                 max_latency=5,
         )
-        self.publisher = pubsub.PublisherClient(batch_settings=settings)
+        self.publisher = pubsub.PublisherClient()
         self.topic_path = self.publisher.topic_path(project, topic)
 
     def publish(self, frame_as_bytes):

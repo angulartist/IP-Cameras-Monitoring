@@ -27,6 +27,18 @@ class WindowFormatterFn(beam.DoFn):
         yield '%s - %s - %s' % (win, tsp, element)
 
 
+class KeyIntoWindow(beam.DoFn):
+    def process(self, element, win=beam.DoFn.WindowParam):
+        yield (win, element)
+
+
+class DropKey(beam.DoFn):
+    def process(self, element):
+        _, frame = element
+
+        yield frame
+
+
 def run(argv=None):
     class TemplateOptions(PipelineOptions):
         @classmethod
@@ -42,7 +54,7 @@ def run(argv=None):
     options.view_as(StandardOptions).streaming = True
 
     # Uncomment this to run the pipeline on the Cloud (Dataflow)
-    # options.view_as(StandardOptions).runner = 'DataflowRunner'
+    options.view_as(StandardOptions).runner = 'DataflowRunner'
 
     with beam.Pipeline(options=options) as p:
         parsed_frames = \
@@ -56,8 +68,12 @@ def run(argv=None):
         (parsed_frames
          | 'Apply Fixed Window' >> beam.WindowInto(
                         window.FixedWindows(5))
+         | 'Add Window As Key' >> beam.ParDo(KeyIntoWindow())
+         | 'Group By Key' >> beam.GroupByKey()
+         | 'Drop Key' >> beam.ParDo(DropKey())
+         | 'Flatten Frames' >> beam.FlatMap(lambda x: x)
          | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
-         | 'Format' >> beam.FlatMap(lambda x: x)
+         | 'Flatten Labels' >> beam.FlatMap(lambda x: x)
          | 'Pair With One' >> beam.Map(lambda x: (x, 1))
          | 'Sum Label Occurrences' >> beam.CombinePerKey(sum)
          | 'Format with Window and Timestamp' >> beam.ParDo(WindowFormatterFn())

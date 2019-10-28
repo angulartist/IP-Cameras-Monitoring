@@ -27,9 +27,9 @@ class DetectLabelsFn(beam.DoFn):
     def process(self, element):
         # TODO: ML MODEL SHOULD NEVER BE LOADED THERE:
         # For demo purposes. Setup hook doesn't work on stream mode with the Direct Runner
-        logging.info("[ML] Loading the model 🥶")
-        net = cv2.dnn.readNetFromTensorflow(SAVED_MODEL_PATH, SAVED_PROTO_PATH)
-        self.model = Deeper(net, confidence=.3)
-        self.model.detect(element)
+        # logging.info("[ML] Loading the model 🥶")
+        # net = cv2.dnn.readNetFromTensorflow(SAVED_MODEL_PATH, SAVED_PROTO_PATH)
+        # self.model = Deeper(net, confidence=.3)
+        # self.model.detect(element)
 
         yield self.model.detect(element)
