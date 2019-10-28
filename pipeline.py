@@ -60,8 +60,7 @@ def run(argv=None):
         parsed_frames = \
             (p
              | 'Read From Pub/Sub' >> beam.io.ReadFromPubSub(
-                            topic='projects/alert-shape-256811/topics/ml-flow',
-                            # id_label='event_id'
+                            topic='projects/alert-shape-256811/topics/ml-flow'
                     ).with_output_types(six.binary_type))
         # | 'Add Event Time' >> beam.ParDo(AddTimestampFn()))
 
