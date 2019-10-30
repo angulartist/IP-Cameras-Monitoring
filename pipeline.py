@@ -54,7 +54,7 @@ def run(argv=None):
     options.view_as(StandardOptions).streaming = True
 
     # Uncomment this to run the pipeline on the Cloud (Dataflow)
-    options.view_as(StandardOptions).runner = 'DataflowRunner'
+    # options.view_as(StandardOptions).runner = 'DataflowRunner'
 
     with beam.Pipeline(options=options) as p:
         parsed_frames = \

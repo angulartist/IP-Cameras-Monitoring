@@ -6,10 +6,13 @@ Convert each frame into its base64 representation to be pushed to the downstream
 from __future__ import absolute_import
 
 import argparse
+import threading
 from collections import deque
 from multiprocessing.pool import ThreadPool
 
+from collector.stream import TwitchStreamHandler
 from collector.utils import *
+from ml_processing.deeper import Deeper
 
 
 def main():
@@ -19,49 +22,62 @@ def main():
     args = parser.parse_args()
 
     """Uncomment to test object detection"""
-    # PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
-    # MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
-    # print("[ML] Loading the model 🥶")
-    # net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
+    PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
+    MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
+    print("[ML] Loading the model 🥶")
+    net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
 
-    pub_sub_client = PubSubClient()
+    # Utils
+    pubsub_client = PubSubClient()
     frame_helper = FrameHelper()
+    deeper = Deeper(network=net, confidence=0.3)
 
     thread_n = cv2.getNumberOfCPUs()
     pool = ThreadPool(processes=thread_n)
     pending = deque()
 
+    encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
     frame_interval = StatValue()
     last_frame_time = clock()
 
-    stream = cv2.VideoCapture(args.stream)
+    vs = TwitchStreamHandler(args.stream, resolution='360p')
 
-    def process_frame(current_frame, t0):
-        current_frame = frame_helper.rescale_frame(current_frame, scale_percent=40)
-        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
-        _, buffer = cv2.imencode('.jpg', current_frame, encode_param)
-        # print('Will publish frame...')
-        pub_sub_client.publish(buffer.tobytes())
+    def show_stream(_frame):
+        cv2.imshow('Stream', _frame)
+        cv2.waitKey(10)
 
-        return current_frame, t0
+    def predict(_frame):
+        return deeper.detect(_frame)
 
-    while stream.isOpened():
+    def process_frame(_frame, _t0):
+        _, buffer = cv2.imencode('.jpg', _frame, encode_params)
+        # _frame = predict(buffer.tobytes())
+        print('Will publish frame...')
+        # pubsub_client.publish(buffer.tobytes())
+
+        return _frame, _t0
+
+    while True:
         while len(pending) > 0 and pending[0].ready():
-            pending.popleft().get()
+            frame, t0 = pending.popleft().get()
+            print("Threads:  %s - %s - %s" % (
+                    threading.active_count(), t0, threading.current_thread()))
+            """Uncomment to watch stream"""
+            show_stream(frame)
         if len(pending) < thread_n:
-            has_frames, frame = stream.read()
 
-            if not has_frames:
-                break
+            if vs.more():
+                frame = vs.read()
+                t = clock()
+                frame_interval.update(t - last_frame_time)
+                last_frame_time = t
 
-            t = clock()
-            frame_interval.update(t - last_frame_time)
-            last_frame_time = t
-
-            task = pool.apply_async(process_frame, (frame.copy(), t))
-            pending.append(task)
+                task = pool.apply_async(process_frame, (frame.copy(), t))
+                pending.append(task)
+            else:
+                continue
     # Release the stream
-    stream.release()
+    vs.stop()
 
 
 if __name__ == '__main__':

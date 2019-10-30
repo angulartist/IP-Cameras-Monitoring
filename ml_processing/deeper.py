@@ -37,7 +37,7 @@ class Deeper(object):
         )), cv2.COLOR_BGR2RGB)
 
         """Uncomment to visualize labels and boxes"""
-        # (h, w) = image.shape[:2]
+        (h, w) = image.shape[:2]
 
         blob = cv2.dnn.blobFromImage(image, size=(300, 300), swapRB=True)
         self.network.setInput(blob)
@@ -52,26 +52,27 @@ class Deeper(object):
                 labels.append('%s' % self.classes[index])
 
                 """Uncomment to visualize labels and boxes"""
-                # box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                # (startX, startY, endX, endY) = box.astype("int")
-                # label_with_confidence = "{}: {:.2f}%".format(self.classes[index],
-                #                                              confidence * 100)
-                #
-                # cv2.rectangle(image,
-                #               (startX, startY),
-                #               (endX, endY),
-                #               self.colors[index], 1)
-                #
-                # y = startY - 15 if startY - 15 > 15 else startY + 15
-                #
-                # cv2.putText(image,
-                #             label_with_confidence,
-                #             (startX, y),
-                #             cv2.FONT_HERSHEY_SIMPLEX,
-                #             0.5, self.colors[index], 1)
+                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                (startX, startY, endX, endY) = box.astype("int")
+                label_with_confidence = "{}: {:.2f}%".format(self.classes[index],
+                                                             confidence * 100)
 
-        return labels
+                cv2.rectangle(image,
+                              (startX, startY),
+                              (endX, endY),
+                              self.colors[index], 1)
+
+                y = startY - 15 if startY - 15 > 15 else startY + 15
+
+                cv2.putText(image,
+                            label_with_confidence,
+                            (startX, y),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.5, self.colors[index], 1)
+
+        # return labels
 
         """Uncomment to test object detection"""
         # cv2.imshow("Output", image)
         # cv2.waitKey(1)
+        return image
