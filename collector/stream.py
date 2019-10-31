@@ -2,12 +2,11 @@ import subprocess as sp
 from queue import Queue
 from threading import Thread
 
-import numpy
 import streamlink
 
 
 class TwitchStreamHandler:
-    def __init__(self, twitch_url, queue_size=128, resolution='720p', n_frame=10):
+    def __init__(self, twitch_url, queue_size=128, resolution='720p', n_frame=30):
         self.stopped = False
         self.twitch_url = twitch_url
         self.res = resolution
@@ -74,11 +73,11 @@ class TwitchStreamHandler:
 
         while True:
             if iter_frames % self.n_frame == 0:
-                frame = numpy.fromstring(self.pipe.stdout.read(
-                        self.height * self.width * 3), dtype='uint8') \
-                    .reshape((self.width, self.height, 3))
+                bfr = self.pipe.stdout.read(
+                        self.height * self.width * 3)
+
                 if not self.Q.full():
-                    self.Q.put(frame)
+                    self.Q.put(bfr)
                     iter_frames += 1
                 else:
                     iter_frames += 1
@@ -92,6 +91,9 @@ class TwitchStreamHandler:
 
     def more(self):
         return self.Q.qsize() > 0
+
+    def get_resolution(self):
+        return self.height, self.width
 
     @classmethod
     def stop(cls):

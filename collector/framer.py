@@ -10,9 +10,10 @@ import threading
 from collections import deque
 from multiprocessing.pool import ThreadPool
 
+import numpy as np
+
 from collector.stream import TwitchStreamHandler
 from collector.utils import *
-from ml_processing.deeper import Deeper
 
 
 def main():
@@ -22,15 +23,15 @@ def main():
     args = parser.parse_args()
 
     """Uncomment to test object detection"""
-    PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
-    MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
-    print("[ML] Loading the model 🥶")
-    net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
+    # PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
+    # MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
+    # print("[ML] Loading the model 🥶")
+    # net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
 
     # Utils
     pubsub_client = PubSubClient()
     frame_helper = FrameHelper()
-    deeper = Deeper(network=net, confidence=0.3)
+    # deeper = Deeper(network=net, confidence=0.3)
 
     thread_n = cv2.getNumberOfCPUs()
     pool = ThreadPool(processes=thread_n)
@@ -44,15 +45,15 @@ def main():
 
     def show_stream(_frame):
         cv2.imshow('Stream', _frame)
-        cv2.waitKey(10)
+        cv2.waitKey(1)
 
-    def predict(_frame):
-        return deeper.detect(_frame)
+    def process_frame(_frame_as_buffer, _t0):
+        height, width = vs.get_resolution()
+        _frame = np.fromstring(_frame_as_buffer, dtype='uint8') \
+            .reshape((width, height, 3))
 
-    def process_frame(_frame, _t0):
         _, buffer = cv2.imencode('.jpg', _frame, encode_params)
-        # _frame = predict(buffer.tobytes())
-        print('Will publish frame...')
+        # print('Will publish frame...')
         # pubsub_client.publish(buffer.tobytes())
 
         return _frame, _t0
@@ -65,14 +66,13 @@ def main():
             """Uncomment to watch stream"""
             show_stream(frame)
         if len(pending) < thread_n:
-
             if vs.more():
-                frame = vs.read()
+                frame_as_buffer = vs.read()
                 t = clock()
                 frame_interval.update(t - last_frame_time)
                 last_frame_time = t
 
-                task = pool.apply_async(process_frame, (frame.copy(), t))
+                task = pool.apply_async(process_frame, (frame_as_buffer, t))
                 pending.append(task)
             else:
                 continue
