@@ -72,11 +72,12 @@ def run(argv=None):
          | 'Drop Key' >> beam.ParDo(DropKey())
          | 'Flatten Frames' >> beam.FlatMap(lambda x: x)
          | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
-         | 'Flatten Labels' >> beam.FlatMap(lambda x: x)
-         | 'Pair With One' >> beam.Map(lambda x: (x, 1))
-         | 'Sum Label Occurrences' >> beam.CombinePerKey(sum)
-         | 'Format with Window and Timestamp' >> beam.ParDo(WindowFormatterFn())
-         | 'Print' >> beam.Map(lambda x: logging.info(x)))
+         # | 'Flatten Labels' >> beam.FlatMap(lambda x: x)
+         # | 'Pair With One' >> beam.Map(lambda x: (x, 1))
+         # | 'Sum Label Occurrences' >> beam.CombinePerKey(sum)
+         # | 'Format with Window and Timestamp' >> beam.ParDo(WindowFormatterFn())
+         | 'Publish Frames' >> beam.io.WriteToPubSub(
+                        topic='projects/alert-shape-256811/topics/ml-flow-out'))
 
 
 if __name__ == '__main__':

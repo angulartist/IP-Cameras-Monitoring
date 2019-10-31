@@ -12,14 +12,15 @@ from multiprocessing.pool import ThreadPool
 
 import numpy as np
 
-from collector.stream import TwitchStreamHandler
+from collector.stream import StreamHandler
 from collector.utils import *
 
 
 def main():
     # args parser
     parser = argparse.ArgumentParser()
-    parser.add_argument('stream', help='static video or video stream to process')
+    parser.add_argument('-s', '--stream', help='Video Live Stream URL', type=str)
+    parser.add_argument('-r', '--resolution', help='Resolution', type=str)
     args = parser.parse_args()
 
     """Uncomment to test object detection"""
@@ -29,7 +30,7 @@ def main():
     # net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
 
     # Utils
-    pubsub_client = PubSubClient()
+    pub = PubSubClient()
     frame_helper = FrameHelper()
     # deeper = Deeper(network=net, confidence=0.3)
 
@@ -38,23 +39,21 @@ def main():
     pending = deque()
 
     encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
-    frame_interval = StatValue()
-    last_frame_time = clock()
 
-    vs = TwitchStreamHandler(args.stream, resolution='360p')
+    stream = StreamHandler(args.stream, resolution=args.resolution)
+    height, width = res[args.resolution].values()
 
     def show_stream(_frame):
         cv2.imshow('Stream', _frame)
-        cv2.waitKey(1)
+        cv2.waitKey(5)
 
     def process_frame(_frame_as_buffer, _t0):
-        height, width = vs.get_resolution()
-        _frame = np.fromstring(_frame_as_buffer, dtype='uint8') \
+        _frame = np.frombuffer(_frame_as_buffer, dtype='uint8') \
             .reshape((width, height, 3))
 
         _, buffer = cv2.imencode('.jpg', _frame, encode_params)
         # print('Will publish frame...')
-        # pubsub_client.publish(buffer.tobytes())
+        pub.publish(buffer.tobytes())
 
         return _frame, _t0
 
@@ -64,20 +63,18 @@ def main():
             print("Threads:  %s - %s - %s" % (
                     threading.active_count(), t0, threading.current_thread()))
             """Uncomment to watch stream"""
-            show_stream(frame)
-        if len(pending) < thread_n:
-            if vs.more():
-                frame_as_buffer = vs.read()
-                t = clock()
-                frame_interval.update(t - last_frame_time)
-                last_frame_time = t
+            # show_stream(frame)
 
+        if len(pending) < thread_n:
+            if stream.more():
+                t = clock()
+                frame_as_buffer = stream.read()
                 task = pool.apply_async(process_frame, (frame_as_buffer, t))
                 pending.append(task)
             else:
                 continue
     # Release the stream
-    vs.stop()
+    stream.stop()
 
 
 if __name__ == '__main__':

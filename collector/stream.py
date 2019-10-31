@@ -4,11 +4,13 @@ from threading import Thread
 
 import streamlink
 
+from collector.utils import res
 
-class TwitchStreamHandler:
-    def __init__(self, twitch_url, queue_size=128, resolution='720p', n_frame=30):
+
+class StreamHandler:
+    def __init__(self, url, queue_size=512, resolution='720p', n_frame=30):
         self.stopped = False
-        self.twitch_url = twitch_url
+        self.url = url
         self.res = resolution
         self.n_frame = n_frame
         self.height = 0
@@ -24,31 +26,22 @@ class TwitchStreamHandler:
 
     def create_pipe(self):
         try:
-            streams = streamlink.streams(self.twitch_url)
+            streams = streamlink.streams(self.url)
         except streamlink.exceptions.NoPluginError:
             return False
-
-        resolutions = {
-                '360p': {
-                        "height": 640, "width": 360
-                },
-                '720p': {
-                        "height": 1280, "width": 720
-                }
-        }
 
         if self.res in streams:
             final_res = self.res
         else:
-            for key in resolutions:
+            for key in res:
                 if key != self.res and key in streams:
                     final_res = key
                     break
             else:
                 return False
 
-        self.height = resolutions[final_res]["height"]
-        self.width = resolutions[final_res]["width"]
+        self.height = res[final_res]["height"]
+        self.width = res[final_res]["width"]
         stream = streams[final_res]
 
         self.stream_url = stream.url
@@ -73,11 +66,10 @@ class TwitchStreamHandler:
 
         while True:
             if iter_frames % self.n_frame == 0:
-                bfr = self.pipe.stdout.read(
+                frame = self.pipe.stdout.read(
                         self.height * self.width * 3)
-
                 if not self.Q.full():
-                    self.Q.put(bfr)
+                    self.Q.put(frame)
                     iter_frames += 1
                 else:
                     iter_frames += 1
@@ -91,9 +83,6 @@ class TwitchStreamHandler:
 
     def more(self):
         return self.Q.qsize() > 0
-
-    def get_resolution(self):
-        return self.height, self.width
 
     @classmethod
     def stop(cls):

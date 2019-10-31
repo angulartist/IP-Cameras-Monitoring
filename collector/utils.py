@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import time
+
 import cv2
 
 
@@ -43,7 +45,7 @@ class FrameHelper(object):
 
 
 class PubSubClient(object):
-    def __init__(self, project='alert-shape-256811', topic='ml-flow'):
+    def __init__(self, project_id='alert-shape-256811', topic_name='ml-flow'):
         from google.cloud import pubsub
 
         # Used for batching frames
@@ -51,9 +53,35 @@ class PubSubClient(object):
                 max_messages=5,
                 max_latency=1,
         )
+        # Publisher
         self.publisher = pubsub.PublisherClient(settings)
-        self.topic_path = self.publisher.topic_path(project, topic)
+        self.topic_path = self.publisher.topic_path(project_id, topic_name)
+        # Subscriber
+        self.subscriber = pubsub.SubscriberClient()
+        self.subscription_path = self.subscriber.subscription_path(project_id, topic_name)
 
     def publish(self, frame_as_bytes):
         future = self.publisher.publish(self.topic_path, data=frame_as_bytes)
         print('Published id: %s', future.result())
+
+    def receive(self):
+        def callback(message):
+            print('Received message: {}'.format(message.data))
+            message.ack()
+
+        self.subscriber.subscribe(self.subscription_path, callback=callback)
+
+        print('Listening for messages on {}'.format(self.subscription_path))
+        while True:
+            time.sleep(60)
+
+
+# Available resolutions...
+res = {
+        '360p': {
+                "height": 640, "width": 360
+        },
+        '720p': {
+                "height": 1280, "width": 720
+        }
+}

@@ -70,9 +70,13 @@ class Deeper(object):
                             cv2.FONT_HERSHEY_SIMPLEX,
                             0.5, self.colors[index], 1)
 
-        # return labels
+        _, buffer = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+
+        return buffer.tobytes()
+
+        # TODO: Return labels
 
         """Uncomment to test object detection"""
         # cv2.imshow("Output", image)
         # cv2.waitKey(1)
-        return image
+        # return image
