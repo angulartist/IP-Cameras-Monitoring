@@ -24,12 +24,13 @@ class DetectLabelsFn(beam.DoFn):
         net = cv2.dnn.readNetFromTensorflow(SAVED_MODEL_PATH, SAVED_PROTO_PATH)
         self.model = Deeper(net, confidence=.3)
 
-    def process(self, x):
-        print('Num frames: {}'.format(len(x)))
+    def process(self, frames):
+        print('Num frames: {}'.format(len(frames)))
         # TODO: ML MODEL SHOULD NEVER BE LOADED THERE:
         # For demo purposes. Setup hook doesn't work on stream mode with the Direct Runner
         logging.info("[ML] Loading the model 🥶")
         net = cv2.dnn.readNetFromTensorflow(SAVED_MODEL_PATH, SAVED_PROTO_PATH)
         self.model = Deeper(net, confidence=.3)
+        processed_frames = self.model.detect(frames)
 
-        yield self.model.detect(x)
+        yield processed_frames

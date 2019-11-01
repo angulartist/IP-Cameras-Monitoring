@@ -1,8 +1,3 @@
-"""
-Cut a video stream into N frames with a time rotating log file handler.
-Convert each frame into its base64 representation to be pushed to the downstream.
-"""
-
 from __future__ import absolute_import
 
 import argparse
@@ -16,64 +11,67 @@ from collector.stream import StreamHandler
 from collector.utils import *
 
 
-def main():
-    # args parser
+class Framer(object):
+    def __init__(self, stream, resolution, frame_rate=10):
+        self.mq = PubSubClient()
+        # Multiprocessing
+        self.num_threads = cv2.getNumberOfCPUs()
+        self.pool = ThreadPool(processes=self.num_threads)
+        self.pending = deque()
+        # Stream
+        self.stream = StreamHandler(stream, resolution=resolution, frame_rate=frame_rate)
+        self.height, self.width = available_res[resolution].values()
+        # ML
+        """Uncomment to test object detection"""
+        # PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
+        # MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
+        # print("[ML] Loading the model 🥶")
+        # self.net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
+
+    @staticmethod
+    def display(frame):
+        cv2.imshow('Stream', frame)
+        cv2.waitKey(10)
+
+    def add_to_queue(self, frame):
+        ext = '.jpg'
+        params = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+        _, buffer = cv2.imencode(ext, frame, params)
+        self.mq.publish(buffer.tobytes())
+
+    def process_frame(self, frame, t0):
+        np_frame = np.frombuffer(frame, dtype='uint8') \
+            .reshape((self.width, self.height, 3))
+        self.add_to_queue(np_frame)
+
+        return np_frame, t0
+
+    def process(self):
+        prev = 0
+
+        while True:
+            while (len(self.pending) > 0) and (self.pending[0].ready()):
+                frame, t0 = self.pending.popleft().get()
+                print("Threads: {}".format(threading.active_count()))
+                """Uncomment to watch stream"""
+                self.display(frame)
+
+            if len(self.pending) < self.num_threads:
+                t = clock()
+                time_elapsed = time.time() - prev
+                frame = self.stream.get_frame()
+
+                if time_elapsed > 1. / self.stream.frame_rate:
+                    prev = time.time()
+                    task = self.pool.apply_async(self.process_frame, (frame, t))
+                    self.pending.append(task)
+
+
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--stream', help='Video Live Stream URL', type=str)
     parser.add_argument('-r', '--resolution', help='Resolution', type=str)
     args = parser.parse_args()
 
-    """Uncomment to test object detection"""
-    # PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
-    # MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
-    # print("[ML] Loading the model 🥶")
-    # net = cv2.dnn.readNetFromTensorflow(MODEL_PATH, PROTO_PATH)
-
-    # Utils
-    pub = PubSubClient()
-    # deeper = Deeper(network=net, confidence=0.3)
-
-    thread_n = cv2.getNumberOfCPUs()
-    pool = ThreadPool(processes=thread_n)
-    pending = deque()
-
-    encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
-    stream = StreamHandler(args.stream, resolution=args.resolution, frame_rate=10)
-    height, width = available_res[args.resolution].values()
-    prev = 0
-
-    def show_stream(frame):
-        cv2.imshow('Stream', frame)
-        cv2.waitKey(10)
-
-    def process_frame(frame_as_buffer, t0):
-        # Reshape
-        frame = np.frombuffer(frame_as_buffer, dtype='uint8') \
-            .reshape((width, height, 3))
-
-        # Publish to queue
-        _, buffer = cv2.imencode('.jpg', frame, encode_params)
-        pub.publish(buffer.tobytes())
-
-        return frame, t0
-
-    while True:
-        while (len(pending) > 0) and (pending[0].ready()):
-            frame, t0 = pending.popleft().get()
-            print("Threads: {}".format(threading.active_count()))
-            """Uncomment to watch stream"""
-            show_stream(frame)
-
-        if len(pending) < thread_n:
-            t = clock()
-            time_elapsed = time.time() - prev
-            frame = stream.get_frame()
-
-            if time_elapsed > 1. / stream.frame_rate:
-                prev = time.time()
-                task = pool.apply_async(process_frame, (frame, t))
-                pending.append(task)
-
-
-if __name__ == '__main__':
-    main()
+    framer = Framer(args.stream, args.resolution, frame_rate=10)
+    framer.process()

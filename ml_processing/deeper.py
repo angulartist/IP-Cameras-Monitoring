@@ -31,16 +31,14 @@ class Deeper(object):
     def draw_boxes(self, frame, preds, i, w, h, index, confidence):
         box = preds[0, 0, i, 3:7] * np.array([w, h, w, h])
         (startX, startY, endX, endY) = box.astype("int")
-        label_with_confidence = "{}: {:.2f}%".format(self.classes[index],
-                                                     confidence * 100)
-
+        label_with_confidence = "{}: {:.2f}%".format(
+                self.classes[index], confidence * 100
+        )
         cv2.rectangle(frame,
                       (startX, startY),
                       (endX, endY),
                       self.colors[index], 1)
-
         y = startY - 15 if startY - 15 > 15 else startY + 15
-
         cv2.putText(frame,
                     label_with_confidence,
                     (startX, y),
@@ -59,11 +57,9 @@ class Deeper(object):
                 if confidence > self.confidence:
                     index = int(preds[0, 0, i, 1])
                     label = self.classes[index]
-
                     """Uncomment to visualize labels and boxes"""
                     # (h, w) = frame.shape[:2]
                     # self.draw_boxes(frame, preds, i, w, h, index, confidence)
-
                     labels.append(label)
 
         return labels
