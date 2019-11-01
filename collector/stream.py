@@ -1,14 +1,12 @@
 import subprocess as sp
-from queue import Queue
-from threading import Thread
 
 import streamlink
 
-from collector.utils import res
+from collector.utils import available_res
 
 
 class StreamHandler:
-    def __init__(self, url, queue_size=512, resolution='720p', n_frame=30):
+    def __init__(self, url, resolution='720p', n_frame=30):
         self.stopped = False
         self.url = url
         self.res = resolution
@@ -18,11 +16,9 @@ class StreamHandler:
         self.pipe = None
         self.stream_url = None
 
-        self.Q = Queue(maxsize=queue_size)
-        checkIfStreamsWorks = self.create_pipe()
-
-        if checkIfStreamsWorks:
-            self.start_buffer()
+        if not self.create_pipe():
+            print('Unable to create stream [pipe]')
+            return
 
     def create_pipe(self):
         try:
@@ -33,15 +29,15 @@ class StreamHandler:
         if self.res in streams:
             final_res = self.res
         else:
-            for key in res:
+            for key in available_res:
                 if key != self.res and key in streams:
                     final_res = key
                     break
             else:
                 return False
 
-        self.height = res[final_res]["height"]
-        self.width = res[final_res]["width"]
+        self.height = available_res[final_res]["height"]
+        self.width = available_res[final_res]["width"]
         stream = streams[final_res]
 
         self.stream_url = stream.url
@@ -54,35 +50,8 @@ class StreamHandler:
 
         return True
 
-    def start_buffer(self):
-        thread = Thread(target=self.update_buffer, args=())
-        thread.daemon = True
-        thread.start()
-
-        return self
-
-    def update_buffer(self):
-        iter_frames = 0
-
-        while True:
-            if iter_frames % self.n_frame == 0:
-                frame = self.pipe.stdout.read(
-                        self.height * self.width * 3)
-                if not self.Q.full():
-                    self.Q.put(frame)
-                    iter_frames += 1
-                else:
-                    iter_frames += 1
-                    continue
-            else:
-                iter_frames += 1
-                continue
-
-    def read(self):
-        return self.Q.get()
-
-    def more(self):
-        return self.Q.qsize() > 0
+    def get_frame(self):
+        return self.pipe.stdout.read(self.height * self.width * 3)
 
     @classmethod
     def stop(cls):

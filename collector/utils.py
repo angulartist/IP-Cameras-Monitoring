@@ -1,8 +1,11 @@
 from __future__ import absolute_import
 
 import time
+from io import BytesIO
 
 import cv2
+import numpy as np
+from PIL import Image
 
 
 def clock():
@@ -50,8 +53,8 @@ class PubSubClient(object):
 
         # Used for batching frames
         settings = pubsub.types.BatchSettings(
-                max_messages=5,
-                max_latency=1,
+                max_messages=30,
+                max_latency=2,
         )
         # Publisher
         self.publisher = pubsub.PublisherClient(settings)
@@ -61,12 +64,11 @@ class PubSubClient(object):
         self.subscription_path = self.subscriber.subscription_path(project_id, topic_name)
 
     def publish(self, frame_as_bytes):
-        future = self.publisher.publish(self.topic_path, data=frame_as_bytes)
-        print('Published id: %s', future.result())
+        self.publisher.publish(self.topic_path, data=frame_as_bytes)
+        print('Published!')
 
     def receive(self):
         def callback(message):
-            print('Received message: {}'.format(message.data))
             message.ack()
 
         self.subscriber.subscribe(self.subscription_path, callback=callback)
@@ -76,8 +78,7 @@ class PubSubClient(object):
             time.sleep(60)
 
 
-# Available resolutions...
-res = {
+available_res = {
         '360p': {
                 "height": 640, "width": 360
         },

@@ -1,10 +1,7 @@
 from __future__ import absolute_import
 
-from io import BytesIO
-
 import cv2
 import numpy as np
-from PIL import Image
 
 
 class Deeper(object):
@@ -31,52 +28,42 @@ class Deeper(object):
                         90: 'toothbrush'}
         self.colors = np.random.uniform(0, 255, size=(len(self.classes) * 2, 3))
 
-    def detect(self, frame_as_bytes):
-        image = cv2.cvtColor(np.array(Image.open(
-                BytesIO(frame_as_bytes)
-        )), cv2.COLOR_BGR2RGB)
+    def draw_boxes(self, frame, preds, i, w, h, index, confidence):
+        box = preds[0, 0, i, 3:7] * np.array([w, h, w, h])
+        (startX, startY, endX, endY) = box.astype("int")
+        label_with_confidence = "{}: {:.2f}%".format(self.classes[index],
+                                                     confidence * 100)
 
-        """Uncomment to visualize labels and boxes"""
-        (h, w) = image.shape[:2]
+        cv2.rectangle(frame,
+                      (startX, startY),
+                      (endX, endY),
+                      self.colors[index], 1)
 
-        blob = cv2.dnn.blobFromImage(image, size=(300, 300), swapRB=True)
+        y = startY - 15 if startY - 15 > 15 else startY + 15
+
+        cv2.putText(frame,
+                    label_with_confidence,
+                    (startX, y),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, self.colors[index], 1)
+
+    def detect(self, frames):
+        blob = cv2.dnn.blobFromImages(frames, size=(300, 300), swapRB=True)
         self.network.setInput(blob)
-        detections = self.network.forward()
+        preds = self.network.forward()
 
         labels = []
-        for i in np.arange(0, detections.shape[2]):
-            confidence = detections[0, 0, i, 2]
+        for _ in frames:
+            for i in np.arange(0, preds.shape[2]):
+                confidence = preds[0, 0, i, 2]
+                if confidence > self.confidence:
+                    index = int(preds[0, 0, i, 1])
+                    label = self.classes[index]
 
-            if confidence > self.confidence:
-                index = int(detections[0, 0, i, 1])
-                labels.append('%s' % self.classes[index])
+                    """Uncomment to visualize labels and boxes"""
+                    # (h, w) = frame.shape[:2]
+                    # self.draw_boxes(frame, preds, i, w, h, index, confidence)
 
-                """Uncomment to visualize labels and boxes"""
-                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                (startX, startY, endX, endY) = box.astype("int")
-                label_with_confidence = "{}: {:.2f}%".format(self.classes[index],
-                                                             confidence * 100)
+                    labels.append(label)
 
-                cv2.rectangle(image,
-                              (startX, startY),
-                              (endX, endY),
-                              self.colors[index], 1)
-
-                y = startY - 15 if startY - 15 > 15 else startY + 15
-
-                cv2.putText(image,
-                            label_with_confidence,
-                            (startX, y),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.5, self.colors[index], 1)
-
-        _, buffer = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
-
-        return buffer.tobytes()
-
-        # TODO: Return labels
-
-        """Uncomment to test object detection"""
-        # cv2.imshow("Output", image)
-        # cv2.waitKey(1)
-        # return image
+        return labels

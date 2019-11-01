@@ -10,8 +10,6 @@ import threading
 from collections import deque
 from multiprocessing.pool import ThreadPool
 
-import numpy as np
-
 from collector.stream import StreamHandler
 from collector.utils import *
 
@@ -31,7 +29,6 @@ def main():
 
     # Utils
     pub = PubSubClient()
-    frame_helper = FrameHelper()
     # deeper = Deeper(network=net, confidence=0.3)
 
     thread_n = cv2.getNumberOfCPUs()
@@ -40,41 +37,36 @@ def main():
 
     encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
 
-    stream = StreamHandler(args.stream, resolution=args.resolution)
-    height, width = res[args.resolution].values()
+    stream = StreamHandler(args.stream, resolution=args.resolution, n_frame=10)
+    height, width = available_res[args.resolution].values()
 
-    def show_stream(_frame):
-        cv2.imshow('Stream', _frame)
-        cv2.waitKey(5)
+    def show_stream(frame):
+        cv2.imshow('Stream', frame)
+        cv2.waitKey(10)
 
-    def process_frame(_frame_as_buffer, _t0):
-        _frame = np.frombuffer(_frame_as_buffer, dtype='uint8') \
+    def process_frame(frame_as_buffer, t0):
+        # Reshape
+        frame = np.frombuffer(frame_as_buffer, dtype='uint8') \
             .reshape((width, height, 3))
 
-        _, buffer = cv2.imencode('.jpg', _frame, encode_params)
-        # print('Will publish frame...')
+        # Publish to queue
+        _, buffer = cv2.imencode('.jpg', frame, encode_params)
         pub.publish(buffer.tobytes())
 
-        return _frame, _t0
+        return frame, t0
 
     while True:
         while len(pending) > 0 and pending[0].ready():
             frame, t0 = pending.popleft().get()
-            print("Threads:  %s - %s - %s" % (
-                    threading.active_count(), t0, threading.current_thread()))
+            print("Threads: {}".format(threading.active_count()))
             """Uncomment to watch stream"""
-            # show_stream(frame)
+            show_stream(frame)
 
         if len(pending) < thread_n:
-            if stream.more():
-                t = clock()
-                frame_as_buffer = stream.read()
-                task = pool.apply_async(process_frame, (frame_as_buffer, t))
-                pending.append(task)
-            else:
-                continue
-    # Release the stream
-    stream.stop()
+            t = clock()
+            frame = stream.get_frame()
+            task = pool.apply_async(process_frame, (frame, t))
+            pending.append(task)
 
 
 if __name__ == '__main__':
