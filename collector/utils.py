@@ -1,11 +1,8 @@
 from __future__ import absolute_import
 
 import time
-from io import BytesIO
 
 import cv2
-import numpy as np
-from PIL import Image
 
 
 def clock():
