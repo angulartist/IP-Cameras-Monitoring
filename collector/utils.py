@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import datetime as dt
 import time
 
 import cv2
@@ -54,22 +55,24 @@ class PubSubClient(object):
                 max_latency=2,
         )
         # Publisher
-        self.publisher = pubsub.PublisherClient(settings)
+        self.publisher = pubsub.PublisherClient()
         self.topic_path = self.publisher.topic_path(project_id, topic_name)
         # Subscriber
         self.subscriber = pubsub.SubscriberClient()
         self.subscription_path = self.subscriber.subscription_path(project_id, topic_name)
 
     def publish(self, frame_as_bytes):
-        self.publisher.publish(self.topic_path, data=frame_as_bytes)
-        print('Published!')
+        rfc_timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
+        self.publisher.publish(self.topic_path,
+                               data=frame_as_bytes,
+                               timestamp=str(rfc_timestamp))
+        print('Published at {}'.format(rfc_timestamp))
 
     def receive(self):
         def callback(message):
             message.ack()
 
         self.subscriber.subscribe(self.subscription_path, callback=callback)
-
         print('Listening for messages on {}'.format(self.subscription_path))
         while True:
             time.sleep(60)

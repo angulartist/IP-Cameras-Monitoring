@@ -25,6 +25,7 @@ class DetectLabelsFn(beam.DoFn):
         self.model = Deeper(net, confidence=.3)
 
     def process(self, x):
+        print('Num frames: {}'.format(len(x)))
         # TODO: ML MODEL SHOULD NEVER BE LOADED THERE:
         # For demo purposes. Setup hook doesn't work on stream mode with the Direct Runner
         logging.info("[ML] Loading the model 🥶")

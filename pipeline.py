@@ -67,25 +67,23 @@ def run(argv=None):
     # options.view_as(StandardOptions).runner = 'DataflowRunner'
 
     with beam.Pipeline(options=options) as p:
-        parsed_frames = \
+        windowed_frames = \
             (p
              | 'Read From Pub/Sub' >> beam.io.ReadFromPubSub(
-                            topic='projects/alert-shape-256811/topics/ml-flow'
-                    ).with_output_types(six.binary_type))
-        # | 'Add Event Time' >> beam.ParDo(AddTimestampFn()))
+                            topic='projects/alert-shape-256811/topics/ml-flow',
+                            timestamp_attribute='timestamp').with_output_types(six.binary_type)
+             | 'Transform To Numpy Array' >> beam.ParDo(TransformToNumpyArrayFn())
+             | 'Apply Fixed Window' >> beam.WindowInto(
+                            window.FixedWindows(10))
+             | 'Add Window As Key' >> beam.ParDo(KeyIntoWindow()))
 
-        (parsed_frames
-         | 'Transform To Numpy Array' >> beam.ParDo(TransformToNumpyArrayFn())
-         | 'Apply Fixed Window' >> beam.WindowInto(
-                        window.FixedWindows(5))
-         # | 'Add Window As Key' >> beam.ParDo(KeyIntoWindow())
-         # | 'Group By Key' >> beam.GroupByKey()
-         # | 'Drop Key' >> beam.ParDo(DropKey())
-         | 'Group Into Batches' >> beam.BatchElements(min_batch_size=49, max_batch_size=50)
+        (windowed_frames
+         | 'Group By Key' >> beam.GroupByKey()
+         | 'Drop Key' >> beam.ParDo(DropKey())
          | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
-         | 'Flatten Labels' >> beam.FlatMap(lambda x: x)
-         | 'Pair With One' >> beam.Map(lambda x: (x, 1))
-         | 'Sum Label Occurrences' >> beam.CombinePerKey(sum)
+         # | 'Pair With One' >> beam.Map(lambda x: (x, 1))
+         # | 'Group For Mean' >> beam.GroupByKey()
+         # | 'Sum Label Occurrences' >> beam.CombineValues(MeanCombineFn())
          # | 'Format with Window and Timestamp' >> beam.ParDo(WindowFormatterFn())
          # | 'Publish Frames' >> beam.io.WriteToPubSub(
          #                topic='projects/alert-shape-256811/topics/ml-flow-out'))

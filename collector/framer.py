@@ -53,7 +53,7 @@ def main():
 
         # Publish to queue
         _, buffer = cv2.imencode('.jpg', frame, encode_params)
-        # pub.publish(buffer.tobytes())
+        pub.publish(buffer.tobytes())
 
         return frame, t0
 
