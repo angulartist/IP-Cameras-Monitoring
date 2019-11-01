@@ -10,6 +10,8 @@ import threading
 from collections import deque
 from multiprocessing.pool import ThreadPool
 
+import numpy as np
+
 from collector.stream import StreamHandler
 from collector.utils import *
 
@@ -36,9 +38,9 @@ def main():
     pending = deque()
 
     encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
-
-    stream = StreamHandler(args.stream, resolution=args.resolution, n_frame=10)
+    stream = StreamHandler(args.stream, resolution=args.resolution, frame_rate=10)
     height, width = available_res[args.resolution].values()
+    prev = 0
 
     def show_stream(frame):
         cv2.imshow('Stream', frame)
@@ -51,12 +53,12 @@ def main():
 
         # Publish to queue
         _, buffer = cv2.imencode('.jpg', frame, encode_params)
-        pub.publish(buffer.tobytes())
+        # pub.publish(buffer.tobytes())
 
         return frame, t0
 
     while True:
-        while len(pending) > 0 and pending[0].ready():
+        while (len(pending) > 0) and (pending[0].ready()):
             frame, t0 = pending.popleft().get()
             print("Threads: {}".format(threading.active_count()))
             """Uncomment to watch stream"""
@@ -64,9 +66,13 @@ def main():
 
         if len(pending) < thread_n:
             t = clock()
+            time_elapsed = time.time() - prev
             frame = stream.get_frame()
-            task = pool.apply_async(process_frame, (frame, t))
-            pending.append(task)
+
+            if time_elapsed > 1. / stream.frame_rate:
+                prev = time.time()
+                task = pool.apply_async(process_frame, (frame, t))
+                pending.append(task)
 
 
 if __name__ == '__main__':

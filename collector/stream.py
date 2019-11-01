@@ -6,11 +6,11 @@ from collector.utils import available_res
 
 
 class StreamHandler:
-    def __init__(self, url, resolution='720p', n_frame=30):
+    def __init__(self, url, resolution='720p', frame_rate=30):
         self.stopped = False
         self.url = url
         self.res = resolution
-        self.n_frame = n_frame
+        self.frame_rate = frame_rate
         self.height = 0
         self.width = 0
         self.pipe = None
