@@ -61,6 +61,8 @@ class StreamHandler:
         thread.daemon = True
         thread.start()
 
+        return self
+
     def update_buffer(self):
         prev = 0
         while True:

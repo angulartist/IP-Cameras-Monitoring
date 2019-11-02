@@ -11,22 +11,23 @@ class PubSubClient(object):
         # Used for batching frames
         settings = pubsub.types.BatchSettings(
                 max_messages=30,
-                max_latency=2,
-                max_bytes=1024
+                max_latency=2
         )
         # Publisher
-        self.publisher = pubsub.PublisherClient()
+        self.publisher = pubsub.PublisherClient(settings)
         self.topic_path = self.publisher.topic_path(project_id, topic_name)
         self.Q = Queue()
-        self.start_queue()
+        self.start()
         # Subscriber
         self.subscriber = pubsub.SubscriberClient()
         self.subscription_path = self.subscriber.subscription_path(project_id, topic_name)
 
-    def start_queue(self):
+    def start(self):
         thread = Thread(target=self.publish, args=())
         thread.daemon = True
         thread.start()
+
+        return self
 
     def publish(self):
         while True:
@@ -36,18 +37,11 @@ class PubSubClient(object):
                 self.publisher.publish(self.topic_path, data=frame, timestamp=str(rfc_timestamp))
                 print('Published at {}'.format(rfc_timestamp))
 
-    def add_to_queue(self, buffer):
+            time.sleep(.5)
+
+    def add(self, buffer):
         if not self.Q.full():
             self.Q.put(buffer.tobytes())
-
-    def receive(self):
-        def callback(message):
-            message.ack()
-
-        self.subscriber.subscribe(self.subscription_path, callback=callback)
-        print('Listening for messages on {}'.format(self.subscription_path))
-        while True:
-            time.sleep(60)
 
     def read(self):
         return self.Q.get()

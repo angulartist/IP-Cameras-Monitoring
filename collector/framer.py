@@ -2,11 +2,13 @@ from __future__ import absolute_import
 
 import argparse
 import threading
+import time
 from collections import deque
 from multiprocessing.pool import ThreadPool
 
 import numpy as np
 
+from collector.playback import Playback
 from collector.pubsubclient import PubSubClient
 from collector.stream import StreamHandler
 from collector.utils import *
@@ -16,7 +18,7 @@ from ml_processing.deeper import Deeper
 class Framer(object):
     def __init__(self, stream, resolution, frame_rate=10):
         self.mq = PubSubClient()
-        # Multiprocessing
+        # Multithreading
         self.num_threads = cv2.getNumberOfCPUs()
         self.pool = ThreadPool(processes=self.num_threads)
         self.pending = deque()
@@ -27,6 +29,8 @@ class Framer(object):
         """Uncomment to test object detection"""
         self.PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
         self.MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
+        # Playback (testing)
+        self.playback = Playback()
 
     def visualize(self, frames):
         print("[ML] Loading the model 🥶")
@@ -39,23 +43,25 @@ class Framer(object):
     @staticmethod
     def display(frame):
         cv2.imshow('Stream', frame)
-        cv2.waitKey(10)
+        cv2.waitKey(5)
 
-    def process_frame(self, frame, t0):
+    def process_frame(self, frame, _t):
         np_frame = np.frombuffer(frame, dtype='uint8') \
             .reshape((self.width, self.height, 3))
         ext = '.jpg'
-        params = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+        params = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
         _, buffer = cv2.imencode(ext, np_frame, params)
-        self.mq.add_to_queue(buffer)
+        self.mq.add(buffer)
 
-        return np_frame, t0
+        # self.playback.add(np_frame)
+
+        return np_frame
 
     def process(self):
         # frames = []
         while True:
             while (len(self.pending) > 0) and (self.pending[0].ready()):
-                frame, _ = self.pending.popleft().get()
+                frame = self.pending.popleft().get()
                 print("Threads: {}".format(threading.active_count()))
                 """Uncomment to watch stream"""
                 self.display(frame)
