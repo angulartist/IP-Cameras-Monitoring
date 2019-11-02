@@ -45,21 +45,23 @@ class Deeper(object):
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5, self.colors[index], 1)
 
+        return frame
+
     def detect(self, frames):
         blob = cv2.dnn.blobFromImages(frames, size=(300, 300), swapRB=True)
         self.network.setInput(blob)
         preds = self.network.forward()
 
         labels = []
-        for _ in frames:
+        for idx, frame in enumerate(frames):
             for i in np.arange(0, preds.shape[2]):
                 confidence = preds[0, 0, i, 2]
                 if confidence > self.confidence:
                     index = int(preds[0, 0, i, 1])
                     label = self.classes[index]
                     """Uncomment to visualize labels and boxes"""
-                    # (h, w) = frame.shape[:2]
-                    # self.draw_boxes(frame, preds, i, w, h, index, confidence)
-                    labels.append(label)
+                    (h, w) = frame.shape[:2]
+                    processed_frame = self.draw_boxes(frame, preds, i, w, h, index, confidence)
+                    labels.append(processed_frame)
 
         return labels

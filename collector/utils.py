@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import datetime as dt
 import time
+from queue import Queue
+from threading import Thread
 
 import cv2
 
@@ -24,7 +26,6 @@ class StatValue:
 
 
 class FrameHelper(object):
-
     @staticmethod
     def rescale_frame(frame, scale_percent=50):
         """
@@ -53,20 +54,33 @@ class PubSubClient(object):
         settings = pubsub.types.BatchSettings(
                 max_messages=30,
                 max_latency=2,
+                max_bytes=1024
         )
         # Publisher
         self.publisher = pubsub.PublisherClient()
         self.topic_path = self.publisher.topic_path(project_id, topic_name)
+        self.Q = Queue()
+        self.start_queue()
         # Subscriber
         self.subscriber = pubsub.SubscriberClient()
         self.subscription_path = self.subscriber.subscription_path(project_id, topic_name)
 
-    def publish(self, frame_as_bytes):
-        rfc_timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
-        self.publisher.publish(self.topic_path,
-                               data=frame_as_bytes,
-                               timestamp=str(rfc_timestamp))
-        print('Published at {}'.format(rfc_timestamp))
+    def start_queue(self):
+        thread = Thread(target=self.publish, args=())
+        thread.daemon = True
+        thread.start()
+
+    def publish(self):
+        while True:
+            if self.more():
+                frame = self.read()
+                rfc_timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
+                self.publisher.publish(self.topic_path, data=frame, timestamp=str(rfc_timestamp))
+                print('Published at {}'.format(rfc_timestamp))
+
+    def add_to_queue(self, buffer):
+        if not self.Q.full():
+            self.Q.put(buffer.tobytes())
 
     def receive(self):
         def callback(message):
@@ -76,6 +90,12 @@ class PubSubClient(object):
         print('Listening for messages on {}'.format(self.subscription_path))
         while True:
             time.sleep(60)
+
+    def read(self):
+        return self.Q.get()
+
+    def more(self):
+        return self.Q.qsize() > 0
 
 
 available_res = {
