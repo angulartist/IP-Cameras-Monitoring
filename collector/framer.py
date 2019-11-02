@@ -29,47 +29,45 @@ class Framer(object):
         """Uncomment to test object detection"""
         self.PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
         self.MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
-        # Playback (testing)
-        self.playback = Playback()
-
-    def visualize(self, frames):
         print("[ML] Loading the model 🥶")
         net = cv2.dnn.readNetFromTensorflow(self.MODEL_PATH, self.PROTO_PATH)
-        deeper = Deeper(network=net, confidence=0.3)
-        processed_frames = deeper.detect(frames)
+        self.deeper = Deeper(network=net, confidence=0.3)
+
+    def visualize(self, frames, write=False, count=0) -> None:
+        processed_frames = self.deeper.detect(frames)
         for frame in processed_frames:
-            self.display(frame)
+            if not write:
+                self.display(frame)
+            else:
+                print(count)
+                cv2.imwrite("records/frame%d.jpg" % count, frame)
 
     @staticmethod
-    def display(frame):
+    def display(frame) -> None:
         cv2.imshow('Stream', frame)
         cv2.waitKey(5)
 
     def process_frame(self, frame, _t):
         np_frame = np.frombuffer(frame, dtype='uint8') \
             .reshape((self.width, self.height, 3))
-        ext = '.jpg'
-        params = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
-        _, buffer = cv2.imencode(ext, np_frame, params)
-        self.mq.add(buffer)
 
-        # self.playback.add(np_frame)
+        # self.mq.add(np_frame)
 
         return np_frame
 
-    def process(self):
-        # frames = []
+    def process(self) -> None:
+        # Playback (testing)
+        # playback = Playback()
+        # print(playback)
+        iterator = 0
         while True:
             while (len(self.pending) > 0) and (self.pending[0].ready()):
                 frame = self.pending.popleft().get()
                 print("Threads: {}".format(threading.active_count()))
                 """Uncomment to watch stream"""
-                self.display(frame)
-                # if len(frames) >= 10:
-                #     self.visualize(frames)
-                #     frames = []
-                # else:
-                #     frames.append(frame)
+                # self.display(frame)
+                self.visualize([frame], write=True, count=iterator)
+                iterator += 1
 
             if self.stream.more and (len(self.pending) < self.num_threads):
                 if self.stream.more():
@@ -85,5 +83,5 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--resolution', help='Resolution', type=str)
     args = parser.parse_args()
     # --- #
-    framer = Framer(args.stream, args.resolution, frame_rate=30)
+    framer = Framer(args.stream, args.resolution, frame_rate=60)
     framer.process()

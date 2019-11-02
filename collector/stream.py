@@ -1,4 +1,5 @@
 import subprocess as sp
+import sys
 import time
 from queue import Queue
 from threading import Thread
@@ -23,14 +24,13 @@ class StreamHandler:
         if self.create_pipe():
             self.start_buffer()
         else:
-            print('Unable to create stream [pipe]')
-            return
+            sys.exit("Unable to create stream [pipe]")
 
     def create_pipe(self):
         try:
             streams = streamlink.streams(self.url)
         except streamlink.exceptions.NoPluginError:
-            return False
+            sys.exit("Unable to create stream [pipe]")
 
         if self.res in streams:
             final_res = self.res
@@ -40,16 +40,21 @@ class StreamHandler:
                     final_res = key
                     break
             else:
-                return False
+                sys.exit("Unable to set the resolution")
 
         self.height = available_res[final_res]["height"]
         self.width = available_res[final_res]["width"]
 
         stream = streams[final_res]
-        self.pipe = sp.Popen([
-                'ffmpeg', "-i", stream.url, "-loglevel", "quiet", "-an",
-                "-f", "image2pipe", "-pix_fmt", "bgr24", "-vcodec", "rawvideo", "-"
-        ], stdin=sp.PIPE, stdout=sp.PIPE)
+        command = [
+                'ffmpeg',
+                "-i", stream.url,
+                "-loglevel", "quiet",
+                "-an", "-f", "image2pipe",
+                "-pix_fmt", "bgr24",
+                "-vcodec", "rawvideo", "-"
+        ]
+        self.pipe = sp.Popen(command, stdin=sp.PIPE, stdout=sp.PIPE)
 
         return True
 

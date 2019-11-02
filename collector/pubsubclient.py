@@ -3,6 +3,8 @@ import time
 from queue import Queue
 from threading import Thread
 
+import cv2
+
 
 class PubSubClient(object):
     def __init__(self, project_id='alert-shape-256811', topic_name='ml-flow'):
@@ -37,14 +39,17 @@ class PubSubClient(object):
                 self.publisher.publish(self.topic_path, data=frame, timestamp=str(rfc_timestamp))
                 print('Published at {}'.format(rfc_timestamp))
 
-            time.sleep(.5)
+            time.sleep(.25)
 
-    def add(self, buffer):
+    def add(self, frame):
         if not self.Q.full():
-            self.Q.put(buffer.tobytes())
+            ext = '.jpg'
+            params = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
+            _, buffer = cv2.imencode(ext, frame, params)
+            self.Q.put_nowait(buffer.tobytes())
 
     def read(self):
-        return self.Q.get()
+        return self.Q.get_nowait()
 
     def more(self):
         return self.Q.qsize() > 0

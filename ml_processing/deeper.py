@@ -37,13 +37,13 @@ class Deeper(object):
         cv2.rectangle(frame,
                       (startX, startY),
                       (endX, endY),
-                      self.colors[index], 1)
+                      self.colors[index], 2)
         y = startY - 15 if startY - 15 > 15 else startY + 15
         cv2.putText(frame,
                     label_with_confidence,
                     (startX, y),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5, self.colors[index], 1)
+                    0.5, self.colors[index], 2)
 
         return frame
 
