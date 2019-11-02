@@ -7,6 +7,7 @@ from multiprocessing.pool import ThreadPool
 
 import numpy as np
 
+from collector.pubsubclient import PubSubClient
 from collector.stream import StreamHandler
 from collector.utils import *
 from ml_processing.deeper import Deeper
