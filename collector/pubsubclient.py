@@ -41,11 +41,8 @@ class PubSubClient(object):
 
             time.sleep(.25)
 
-    def add(self, frame):
+    def add(self, buffer):
         if not self.Q.full():
-            ext = '.jpg'
-            params = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
-            _, buffer = cv2.imencode(ext, frame, params)
             self.Q.put_nowait(buffer.tobytes())
 
     def read(self):

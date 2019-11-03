@@ -2,13 +2,11 @@ from __future__ import absolute_import
 
 import argparse
 import threading
-import time
 from collections import deque
 from multiprocessing.pool import ThreadPool
 
 import numpy as np
 
-from collector.playback import Playback
 from collector.pubsubclient import PubSubClient
 from collector.stream import StreamHandler
 from collector.utils import *
@@ -24,56 +22,55 @@ class Framer(object):
         self.pending = deque()
         # Stream
         self.stream = StreamHandler(stream, resolution=resolution, frame_rate=frame_rate)
-        self.height, self.width = available_res[resolution].values()
+        self.height, self.width = resolutions[resolution]
         # ML
         """Uncomment to test object detection"""
         self.PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
         self.MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
         print("[ML] Loading the model 🥶")
         net = cv2.dnn.readNetFromTensorflow(self.MODEL_PATH, self.PROTO_PATH)
-        self.deeper = Deeper(network=net, confidence=0.3)
+        self.deeper = Deeper(network=net, confidence=0.25)
 
-    def visualize(self, frames, write=False, count=0) -> None:
+    def visualize(self, frames) -> None:
         processed_frames = self.deeper.detect(frames)
         for frame in processed_frames:
-            if not write:
-                self.display(frame)
-            else:
-                print(count)
-                cv2.imwrite("records/frame%d.jpg" % count, frame)
+            self.display(frame)
 
     @staticmethod
     def display(frame) -> None:
         cv2.imshow('Stream', frame)
         cv2.waitKey(5)
 
-    def process_frame(self, frame, _t):
+    def process_frame(self, frame_timestamp, _t):
+        frame, timestamp = frame_timestamp
         np_frame = np.frombuffer(frame, dtype='uint8') \
             .reshape((self.width, self.height, 3))
 
-        # self.mq.add(np_frame)
+        # processed_frame = self.deeper.detect(np_frame)
+        # cv2.imwrite("records/frame-{}.jpg".format(timestamp), processed_frame)
+        # print(timestamp)
+
+        # Send to mq
+        ext = '.jpg'
+        params = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
+        _, buffer = cv2.imencode(ext, np_frame, params)
+        self.mq.add(buffer)
 
         return np_frame
 
     def process(self) -> None:
-        # Playback (testing)
-        # playback = Playback()
-        # print(playback)
-        iterator = 0
         while True:
             while (len(self.pending) > 0) and (self.pending[0].ready()):
                 frame = self.pending.popleft().get()
                 print("Threads: {}".format(threading.active_count()))
                 """Uncomment to watch stream"""
-                # self.display(frame)
-                self.visualize([frame], write=True, count=iterator)
-                iterator += 1
+                self.display(frame)
 
             if self.stream.more and (len(self.pending) < self.num_threads):
                 if self.stream.more():
                     t = clock()
-                    frame = self.stream.read()
-                    task = self.pool.apply_async(self.process_frame, (frame, t))
+                    frame_timestamp = self.stream.read()
+                    task = self.pool.apply_async(self.process_frame, (frame_timestamp, t))
                     self.pending.append(task)
 
 
@@ -83,5 +80,5 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--resolution', help='Resolution', type=str)
     args = parser.parse_args()
     # --- #
-    framer = Framer(args.stream, args.resolution, frame_rate=60)
+    framer = Framer(args.stream, args.resolution, frame_rate=10)
     framer.process()

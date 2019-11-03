@@ -47,21 +47,42 @@ class Deeper(object):
 
         return frame
 
-    def detect(self, frames):
+    def detect(self, frame):
+        blob = cv2.dnn.blobFromImage(frame, size=(300, 300), swapRB=True)
+        self.network.setInput(blob)
+        preds = self.network.forward()
+
+        for i in np.arange(0, preds.shape[2]):
+            confidence = preds[0, 0, i, 2]
+            if confidence > self.confidence:
+                index = int(preds[0, 0, i, 1])
+                if index == 3:
+                    # label = self.classes[index]
+                    """Uncomment to visualize labels and boxes"""
+                    (h, w) = frame.shape[:2]
+                    frame = self.draw_boxes(frame, preds, i, w, h, index,
+                                            confidence)
+
+        return frame
+
+    def detect_batch(self, frames):
+        print(len(frames))
         blob = cv2.dnn.blobFromImages(frames, size=(300, 300), swapRB=True)
         self.network.setInput(blob)
         preds = self.network.forward()
 
         labels = []
-        for idx, frame in enumerate(frames):
-            for i in np.arange(0, preds.shape[2]):
-                confidence = preds[0, 0, i, 2]
-                if confidence > self.confidence:
-                    index = int(preds[0, 0, i, 1])
+        for i in np.arange(0, preds.shape[2]):
+            confidence = preds[0, 0, i, 2]
+            if confidence > self.confidence:
+                index = int(preds[0, 0, i, 1])
+                if index in self.classes:
                     label = self.classes[index]
                     """Uncomment to visualize labels and boxes"""
-                    (h, w) = frame.shape[:2]
-                    processed_frame = self.draw_boxes(frame, preds, i, w, h, index, confidence)
-                    labels.append(processed_frame)
+                    # (h, w) = frame.shape[:2]
+                    # processed_frame = self.draw_boxes(frame, preds, i, w, h, index, confidence)
+                    labels.append(label)
+                else:
+                    labels.append('Undefined')
 
         return labels

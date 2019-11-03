@@ -10,6 +10,7 @@ import six
 from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.transforms import window
+from apache_beam.transforms.trigger import AccumulationMode, AfterProcessingTime
 
 from ml_processing.model.inference import DetectLabelsFn
 
@@ -36,9 +37,9 @@ class KeyIntoWindow(beam.DoFn):
 
 class DropKey(beam.DoFn):
     def process(self, x):
-        _, frame = x
+        _, value = x
 
-        yield frame
+        yield value
 
 
 class TransformToNumpyArrayFn(beam.DoFn):
@@ -46,7 +47,15 @@ class TransformToNumpyArrayFn(beam.DoFn):
         np_arr = np.frombuffer(x, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        yield frame
+        yield [frame]
+
+
+class ComputeMean(beam.DoFn):
+    def process(self, x, num_frames):
+        label, occurrences = x
+        mean = sum(occurrences) / num_frames
+
+        yield label, mean
 
 
 def run(argv=None):
@@ -67,22 +76,36 @@ def run(argv=None):
     # options.view_as(StandardOptions).runner = 'DataflowRunner'
 
     with beam.Pipeline(options=options) as p:
-        windowed_frames = \
+        windowed = \
             (p
              | 'Read From Pub/Sub' >> beam.io.ReadFromPubSub(
                             topic='projects/alert-shape-256811/topics/ml-flow',
                             timestamp_attribute='timestamp').with_output_types(six.binary_type)
              | 'Transform To Numpy Array' >> beam.ParDo(TransformToNumpyArrayFn())
-             | 'Apply Fixed Window' >> beam.WindowInto(
-                            window.FixedWindows(10))
-             | 'Add Window As Key' >> beam.ParDo(KeyIntoWindow()))
+             | beam.WindowInto(
+                            window.FixedWindows(10),
+                            trigger=AfterProcessingTime(5),
+                            accumulation_mode=AccumulationMode.DISCARDING))
 
-        (windowed_frames
-         | 'Group By Key' >> beam.GroupByKey()
-         | 'Drop Key' >> beam.ParDo(DropKey())
-         | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
-         # | 'Pair With One' >> beam.Map(lambda x: (x, 1))
-         # | 'Group For Mean' >> beam.GroupByKey()
+        counted = \
+            (windowed
+             | 'Add Default Key' >> beam.Map(lambda x: (0, 1))
+             | 'Count Num Frames' >> beam.CombinePerKey(sum)
+             | 'Drop Default Key' >> beam.ParDo(DropKey()))
+
+        # a = \
+        #     (windowed_frames
+        #      | 'Add Window As Key' >> beam.ParDo(KeyIntoWindow()))
+
+        # b = (windowed_frames
+        #      | 'Group By Key' >> beam.GroupByKey()
+        #      | 'Drop Key' >> beam.ParDo(DropKey()))
+
+        (windowed | 'Detect Labels' >> beam.ParDo(DetectLabelsFn())
+         | 'Flatten' >> beam.FlatMap(lambda x: x)
+         | 'Pair With One' >> beam.Map(lambda x: (x, 1))
+         | 'Group For Mean' >> beam.GroupByKey()
+         | 'Mboulouté' >> beam.ParDo(ComputeMean(), beam.pvalue.AsSingleton(counted))
          # | 'Sum Label Occurrences' >> beam.CombineValues(MeanCombineFn())
          # | 'Format with Window and Timestamp' >> beam.ParDo(WindowFormatterFn())
          # | 'Publish Frames' >> beam.io.WriteToPubSub(

@@ -31,6 +31,6 @@ class DetectLabelsFn(beam.DoFn):
         logging.info("[ML] Loading the model 🥶")
         net = cv2.dnn.readNetFromTensorflow(SAVED_MODEL_PATH, SAVED_PROTO_PATH)
         self.model = Deeper(net, confidence=.3)
-        processed_frames = self.model.detect(frames)
+        processed_frames = self.model.detect_batch(frames)
 
         yield processed_frames

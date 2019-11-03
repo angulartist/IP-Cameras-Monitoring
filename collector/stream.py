@@ -6,7 +6,7 @@ from threading import Thread
 
 import streamlink
 
-from collector.utils import available_res
+from collector.utils import resolutions
 
 
 class StreamHandler:
@@ -33,19 +33,11 @@ class StreamHandler:
             sys.exit("Unable to create stream [pipe]")
 
         if self.res in streams:
-            final_res = self.res
+            self.height, self.width = resolutions[self.res]
         else:
-            for key in available_res:
-                if key != self.res and key in streams:
-                    final_res = key
-                    break
-            else:
-                sys.exit("Unable to set the resolution")
+            sys.exit("Unable to set the resolution, try with a different one")
 
-        self.height = available_res[final_res]["height"]
-        self.width = available_res[final_res]["width"]
-
-        stream = streams[final_res]
+        stream = streams[self.res]
         command = [
                 'ffmpeg',
                 "-i", stream.url,
@@ -59,7 +51,7 @@ class StreamHandler:
         return True
 
     def get_frame(self):
-        return self.pipe.stdout.read(self.height * self.width * 3)
+        return self.pipe.stdout.read(self.height * self.width * 3), round(time.monotonic() * 1000)
 
     def start_buffer(self):
         thread = Thread(target=self.update_buffer, args=())

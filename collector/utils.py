@@ -41,11 +41,7 @@ class FrameHelper(object):
         return cv2.resize(frame, (width, height))
 
 
-available_res = {
-        '360p': {
-                "height": 640, "width": 360
-        },
-        '720p': {
-                "height": 1280, "width": 720
-        }
+resolutions = {
+        '360p': (640, 360),
+        '720p': (1280, 720)
 }
