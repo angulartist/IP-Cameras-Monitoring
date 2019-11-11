@@ -5,7 +5,7 @@ gcloud ai-platform jobs submit training object_detection_`date +%m_%d_%Y_%H_%M_%
     --job-dir gs://ml-train-weapons/model \
     --packages models/research/dist/object_detection-0.1.tar.gz,models/research/slim/dist/slim-0.1.tar.gz,/tmp/pycocotools/pycocotools-2.0.tar.gz \
     --module-name object_detection.model_main \
-    --region us-central1 \
+    --region us-east1 \
     --config ./cmle/cloud.yml \
     -- \
     --model-dir gs://ml-train-weapons/model \
