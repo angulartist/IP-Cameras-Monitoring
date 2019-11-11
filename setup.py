@@ -5,7 +5,8 @@ PACKAGE_VERSION = '0.0.1'
 REQUIRED_PACKAGES = [
         'numpy',
         'opencv-python',
-        'imutils'
+        'imutils',
+        'absl'
 ]
 
 setuptools.setup(

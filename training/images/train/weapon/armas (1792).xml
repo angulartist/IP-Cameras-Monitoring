@@ -1,0 +1,23 @@
+<annotation>
+    <folder>weapons_dataset</folder>
+    <filename>armas (1792).jpg</filename>
+    <size>
+        <width>1400</width>
+        <height>1050</height>
+        <depth>3</depth>
+    </size>
+    <segmented>0</segmented>
+    <object>
+        <name>weapon</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <occluded>0</occluded>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>79</xmin>
+            <ymin>118</ymin>
+            <xmax>1314</xmax>
+            <ymax>995</ymax>
+        </bndbox>
+    </object>
+</annotation>
