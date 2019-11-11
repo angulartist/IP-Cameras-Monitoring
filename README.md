@@ -2,8 +2,6 @@
 
 > Work in progress.
 
-![](img/yoloswag.gif)
-
 Tech involved:
 
 * [Apache Airflow](https://airflow.apache.org/) Workflow orchestrator
