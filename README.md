@@ -2,6 +2,11 @@
 
 > Work in progress.
 
+Dataset used:
+https://sci2s.ugr.es/weapons-detection
+
+Algorithm used : MobileNet SSD
+
 Tech involved:
 
 * [Apache Airflow](https://airflow.apache.org/) Workflow orchestrator
