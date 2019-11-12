@@ -10,7 +10,7 @@ import numpy as np
 from collector.pubsubclient import PubSubClient
 from collector.stream import StreamHandler
 from collector.utils import *
-from demo import Detector
+from ml_processing.detector import Detector
 
 
 class Framer(object):
@@ -23,19 +23,8 @@ class Framer(object):
         # Stream
         self.stream = StreamHandler(stream, resolution=resolution, frame_rate=frame_rate)
         self.height, self.width = resolutions[resolution]
-        # ML
-        """Uncomment to test object detection"""
-        self.PROTO_PATH = './trained/label_map.pbtxt'
-        self.MODEL_PATH = './trained/frozen_inference_graph.pb'
-        # print("[ML] Loading the model 🥶")
-        # net = cv2.dnn.readNetFromTensorflow(self.MODEL_PATH, self.PROTO_PATH)
-        # self.deeper = Deeper(network=net, confidence=0.25)
+        # TODO: Add confidence + draw label
         self.detector = Detector()
-
-    def visualize(self, frames) -> None:
-        processed_frames = self.deeper.detect(frames)
-        for frame in processed_frames:
-            self.display(frame)
 
     @staticmethod
     def display(frame) -> None:
