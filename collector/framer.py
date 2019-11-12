@@ -10,7 +10,7 @@ import numpy as np
 from collector.pubsubclient import PubSubClient
 from collector.stream import StreamHandler
 from collector.utils import *
-from ml_processing.deeper import Deeper
+from demo import Detector
 
 
 class Framer(object):
@@ -25,11 +25,12 @@ class Framer(object):
         self.height, self.width = resolutions[resolution]
         # ML
         """Uncomment to test object detection"""
-        self.PROTO_PATH = './ml_processing/model/trained/model.pbtxt'
-        self.MODEL_PATH = './ml_processing/model/trained/frozen_inference_graph.pb'
-        print("[ML] Loading the model 🥶")
-        net = cv2.dnn.readNetFromTensorflow(self.MODEL_PATH, self.PROTO_PATH)
-        self.deeper = Deeper(network=net, confidence=0.25)
+        self.PROTO_PATH = './trained/label_map.pbtxt'
+        self.MODEL_PATH = './trained/frozen_inference_graph.pb'
+        # print("[ML] Loading the model 🥶")
+        # net = cv2.dnn.readNetFromTensorflow(self.MODEL_PATH, self.PROTO_PATH)
+        # self.deeper = Deeper(network=net, confidence=0.25)
+        self.detector = Detector()
 
     def visualize(self, frames) -> None:
         processed_frames = self.deeper.detect(frames)
@@ -54,17 +55,19 @@ class Framer(object):
         ext = '.jpg'
         params = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
         _, buffer = cv2.imencode(ext, np_frame, params)
-        self.mq.add(buffer)
+        # self.mq.add(buffer)
 
         return np_frame
 
     def process(self) -> None:
         while True:
             while (len(self.pending) > 0) and (self.pending[0].ready()):
-                frame = self.pending.popleft().get()
+                np_frame = self.pending.popleft().get()
                 print("Threads: {}".format(threading.active_count()))
                 """Uncomment to watch stream"""
-                self.display(frame)
+                # self.display(np_frame)
+                img = self.detector.detect(np_frame)
+                self.display(img)
 
             if self.stream.more and (len(self.pending) < self.num_threads):
                 if self.stream.more():
@@ -80,5 +83,5 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--resolution', help='Resolution', type=str)
     args = parser.parse_args()
     # --- #
-    framer = Framer(args.stream, args.resolution, frame_rate=10)
+    framer = Framer(args.stream, args.resolution, frame_rate=2)
     framer.process()
